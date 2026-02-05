@@ -1,7 +1,9 @@
 import React from "react";
 import { Link, Navigate, Route, Routes } from "react-router";
+import ForgotPassword from "./pages/ForgotPassword";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
 
 const ShellLayout = ({ title, description, children }) => (
@@ -16,6 +18,7 @@ const ShellLayout = ({ title, description, children }) => (
         <Link to="/">Home</Link>
         <Link to="/login">Login</Link>
         <Link to="/register">Register</Link>
+        <Link to="/forgot-password">Forgot password</Link>
       </nav>
     </header>
 
@@ -25,21 +28,21 @@ const ShellLayout = ({ title, description, children }) => (
 
 const HomePage = () => (
   <ShellLayout
-    title="Early authentication pages"
-    description="This stage replaces the placeholder routes with the first pass of login, registration, and email verification screens."
+    title="Authentication flow is expanding"
+    description="This step adds the first pass of password recovery screens so the auth area feels more complete before backend token handling is wired up."
   >
     <section className="hero-card">
-      <h2>Account access flow is taking shape</h2>
+      <h2>Password recovery pages are now in place</h2>
       <p>
-        The project now includes basic auth page layouts and form structure.
-        Submission wiring, validation polish, and protected routes can be added in later commits.
+        Users can move from sign in to a recovery request screen and into a reset form.
+        The forms currently focus on layout, local state, and route flow. API integration can be added later.
       </p>
       <div className="button-row">
-        <Link className="primary-button" to="/login">
-          Open login
+        <Link className="primary-button" to="/forgot-password">
+          Forgot password
         </Link>
-        <Link className="secondary-button" to="/register">
-          Open register
+        <Link className="secondary-button" to="/reset-password/demo-token">
+          Open reset form
         </Link>
       </div>
     </section>
@@ -69,6 +72,8 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password/:token" element={<ResetPassword />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
