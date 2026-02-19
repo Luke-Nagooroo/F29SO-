@@ -7,4 +7,8 @@ export const authAPI = {
   getCurrentUser: () => api.get("/auth/me"),
 };
 
+export const chatbotAPI = {
+  sendMessage: (data) => api.post("/chatbot/message", data),
+};
+
 export default api;

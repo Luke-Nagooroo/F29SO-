@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, Navigate, Route, Routes } from "react-router";
 import ForgotPassword from "./pages/ForgotPassword";
 import Login from "./pages/Login";
@@ -9,6 +9,8 @@ import PatientDashboard from "./pages/PatientDashboard";
 import ProviderDashboard from "./pages/ProviderDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
+import ChatbotButton from "./components/chatbot/ChatbotButton";
+import ChatbotWidget from "./components/chatbot/ChatbotWidget";
 
 const ShellLayout = ({ title, description, children }) => (
   <div className="app-shell">
@@ -92,20 +94,27 @@ const HomePage = () => (
 );
 
 function App() {
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/home" element={<Navigate to="/" replace />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/verify-email" element={<VerifyEmail />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password/:token" element={<ResetPassword />} />
-      <Route path="/patient" element={<PatientDashboard />} />
-      <Route path="/provider" element={<ProviderDashboard />} />
-      <Route path="/admin" element={<AdminDashboard />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/home" element={<Navigate to="/" replace />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/patient" element={<PatientDashboard />} />
+        <Route path="/provider" element={<ProviderDashboard />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+
+      <ChatbotButton onClick={() => setIsChatOpen((current) => !current)} />
+      <ChatbotWidget isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+    </>
   );
 }
 
