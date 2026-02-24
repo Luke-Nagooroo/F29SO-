@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { CalendarDays, LayoutDashboard, Users } from "lucide-react";
 import OverviewTab from "../components/provider/OverviewTab";
 import PatientsTab from "../components/provider/PatientsTab";
+import CalendarTab from "../components/provider/CalendarTab";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 
@@ -67,6 +68,7 @@ const priorityAlerts = [
 const tabs = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "patients", label: "Patients", icon: Users },
+  { id: "calendar", label: "Calendar", icon: CalendarDays },
 ];
 
 function ProviderDashboard() {
@@ -88,74 +90,65 @@ function ProviderDashboard() {
         <header className="mb-8 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
           <div className="grid gap-6 p-6 lg:grid-cols-[1.2fr_0.8fr] lg:p-8">
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
-                Provider workspace
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Provider workspace</p>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Manage patients, visits, and your daily care flow</h1>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+                The provider dashboard is now moving beyond placeholders. Overview, patient management, and calendar scheduling can all be explored as separate tabs, while messaging and alerts can land in later commits.
               </p>
-              <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-                Early provider overview and patient management
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-                This first provider slice turns the dashboard shell into a practical workspace with a quick overview,
-                patient browsing, and a simple detail panel. Scheduling, messages, and alerts deepen in later commits.
-              </p>
-
-              <div className="mt-6 flex flex-wrap gap-3">
-                {tabs.map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <Button
-                      key={tab.id}
-                      variant={isActive ? "default" : "outline"}
-                      className={isActive ? "shadow-sm" : ""}
-                      onClick={() => setActiveTab(tab.id)}
-                    >
-                      <Icon className="mr-2 h-4 w-4" />
-                      {tab.label}
-                    </Button>
-                  );
-                })}
-              </div>
             </div>
 
-            <Card className="rounded-[24px] border-slate-200 bg-slate-50/70 shadow-none">
-              <CardHeader>
-                <CardDescription>Shift snapshot</CardDescription>
-                <CardTitle>Today at a glance</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl bg-white p-4 shadow-sm">
-                  <p className="text-sm text-slate-500">Appointments</p>
-                  <p className="mt-2 text-3xl font-semibold text-slate-900">{providerSnapshot.appointmentsToday}</p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+              {[
+                { label: "Today's visits", value: providerSnapshot.appointmentsToday },
+                { label: "Patients", value: providerSnapshot.patientsCount },
+                { label: "Unread messages", value: providerSnapshot.unreadMessages },
+                { label: "Active alerts", value: providerSnapshot.activeAlerts },
+              ].map((item) => (
+                <div key={item.label} className="rounded-[24px] bg-slate-50 p-5">
+                  <p className="text-sm text-slate-500">{item.label}</p>
+                  <p className="mt-2 text-3xl font-bold text-slate-900">{item.value}</p>
                 </div>
-                <div className="rounded-2xl bg-white p-4 shadow-sm">
-                  <p className="text-sm text-slate-500">Patients</p>
-                  <p className="mt-2 text-3xl font-semibold text-slate-900">{providerSnapshot.patientsCount}</p>
-                </div>
-                <div className="rounded-2xl bg-white p-4 shadow-sm">
-                  <p className="text-sm text-slate-500">Unread messages</p>
-                  <p className="mt-2 text-3xl font-semibold text-slate-900">{providerSnapshot.unreadMessages}</p>
-                </div>
-                <div className="rounded-2xl bg-white p-4 shadow-sm">
-                  <p className="text-sm text-slate-500">Active alerts</p>
-                  <p className="mt-2 text-3xl font-semibold text-slate-900">{providerSnapshot.activeAlerts}</p>
-                </div>
-              </CardContent>
-            </Card>
+              ))}
+            </div>
           </div>
         </header>
 
-        {activeTab === "overview" ? (
-          <OverviewTab
-            appointments={todayAppointments}
-            alerts={priorityAlerts}
-            patients={samplePatients}
-            unreadMessages={providerSnapshot.unreadMessages}
-            onOpenPatients={() => setActiveTab("patients")}
-          />
-        ) : (
-          <PatientsTab patients={samplePatients} />
-        )}
+        <section className="mb-8 flex flex-wrap gap-3">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <Button
+              key={id}
+              variant={activeTab === id ? "default" : "outline"}
+              onClick={() => setActiveTab(id)}
+              className="rounded-full"
+            >
+              <Icon className="mr-2 h-4 w-4" />
+              {label}
+            </Button>
+          ))}
+        </section>
+
+        <Card className="rounded-[32px]">
+          <CardHeader>
+            <CardDescription>Provider dashboard</CardDescription>
+            <CardTitle>
+              {activeTab === "overview" ? "Overview and quick review" : activeTab === "patients" ? "Patient management" : "Calendar and scheduling"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {activeTab === "overview" ? (
+              <OverviewTab
+                appointments={todayAppointments}
+                alerts={priorityAlerts}
+                patients={samplePatients}
+                unreadMessages={providerSnapshot.unreadMessages}
+                onOpenPatients={() => setActiveTab("patients")}
+              />
+            ) : null}
+
+            {activeTab === "patients" ? <PatientsTab patients={samplePatients} /> : null}
+            {activeTab === "calendar" ? <CalendarTab /> : null}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

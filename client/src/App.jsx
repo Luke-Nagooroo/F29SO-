@@ -8,6 +8,7 @@ import VerifyEmail from "./pages/VerifyEmail";
 import PatientDashboard from "./pages/PatientDashboard";
 import ProviderDashboard from "./pages/ProviderDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import Appointments from "./pages/Appointments";
 import NotFound from "./pages/NotFound";
 import ChatbotButton from "./components/chatbot/ChatbotButton";
 import ChatbotWidget from "./components/chatbot/ChatbotWidget";
@@ -26,6 +27,7 @@ const ShellLayout = ({ title, description, children }) => (
         <Link to="/register">Register</Link>
         <Link to="/patient">Patient</Link>
         <Link to="/provider">Provider</Link>
+        <Link to="/appointments">Appointments</Link>
         <Link to="/admin">Admin</Link>
       </nav>
     </header>
@@ -48,6 +50,12 @@ const dashboardCards = [
     to: "/provider",
   },
   {
+    title: "Appointments",
+    description:
+      "Scheduling now has its own page with booking, calendar browsing, and upcoming visit cards.",
+    to: "/appointments",
+  },
+  {
     title: "Admin dashboard",
     description:
       "Initial admin surface for platform stats, audit placeholders, and system management sections.",
@@ -68,7 +76,7 @@ const HomePage = () => (
         and live API-backed content can be layered in later commits.
       </p>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {dashboardCards.map((card) => (
           <Link
             key={card.to}
@@ -85,8 +93,8 @@ const HomePage = () => (
         <Link className="primary-button" to="/patient">
           Open patient dashboard
         </Link>
-        <Link className="secondary-button" to="/provider">
-          Review provider view
+        <Link className="secondary-button" to="/appointments">
+          Review appointments
         </Link>
       </div>
     </section>
@@ -108,6 +116,7 @@ function App() {
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/patient" element={<PatientDashboard />} />
         <Route path="/provider" element={<ProviderDashboard />} />
+        <Route path="/appointments" element={<Appointments />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
