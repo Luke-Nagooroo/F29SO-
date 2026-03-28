@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify Your Email</title>
+</head>
+<body style="margin:0;padding:0;background-color:#1c1917;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#1c1917;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="background-color:#292524;border-radius:12px;overflow:hidden;">
+          <tr>
+            <td style="background:linear-gradient(135deg,#1c1917,#4c0519,#7f1d1d);padding:32px;text-align:center;">
+              <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">MEDXI</h1>
+              <p style="margin:8px 0 0;color:#fecdd3;font-size:14px;">Virtual Health Companion</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;">
+              <h2 style="margin:0 0 16px;color:#f5f5f4;font-size:22px;">Verify Your Email</h2>
+              <p style="margin:0 0 24px;color:#a8a29e;font-size:15px;line-height:1.6;">
+                Hi {{name}},<br /><br />
+                Welcome to MEDXI! Please verify your email address to activate your account and start managing your health.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
+                <tr>
+                  <td style="background:linear-gradient(135deg,#881337,#dc2626,#9f1239);border-radius:8px;padding:14px 32px;">
+                    <a href="{{verificationUrl}}" style="color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;">Verify Email Address</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 16px;color:#78716c;font-size:13px;line-height:1.5;">
+                Or copy this link into your browser:<br />
+                <a href="{{verificationUrl}}" style="color:#fb7185;word-break:break-all;">{{verificationUrl}}</a>
+              </p>
+              <p style="margin:0;color:#78716c;font-size:13px;">This link expires in 1 hour. If you didn't create an account, please ignore this email.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px;border-top:1px solid #44403c;text-align:center;">
+              <p style="margin:0;color:#57534e;font-size:12px;">&copy; 2026 MEDXI. Secure healthcare companion.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
