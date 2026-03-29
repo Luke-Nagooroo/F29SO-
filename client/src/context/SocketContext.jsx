@@ -1,43 +1,34 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { useAuth } from "./AuthContext";
 
 const SocketContext = createContext(null);
 
-export const useSocket = () => {
-  const context = useContext(SocketContext);
-
-  if (!context) {
-    throw new Error("useSocket must be used within SocketProvider");
-  }
-
-  return context;
-};
+export const useSocket = () => useContext(SocketContext);
 
 export const SocketProvider = ({ children }) => {
   const { user } = useAuth();
   const socketRef = useRef(null);
   const [connected, setConnected] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [onlineUsers, setOnlineUsers] = useState(new Set());
 
   useEffect(() => {
     if (!user) {
-      socketRef.current?.disconnect();
-      socketRef.current = null;
-      setConnected(false);
-      setOnlineUsers([]);
-      return undefined;
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        setConnected(false);
+        setOnlineUsers(new Set());
+      }
+      return;
     }
 
     const token = localStorage.getItem("accessToken");
-    if (!token) return undefined;
+    if (!token) return;
 
-    const baseUrl =
-      import.meta.env.VITE_SOCKET_URL ||
-      import.meta.env.VITE_API_URL?.replace("/api", "") ||
-      "http://localhost:5000";
+    const serverUrl = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000";
 
-    const socket = io(baseUrl, {
+    const socket = io(serverUrl, {
       auth: { token },
       transports: ["websocket", "polling"],
     });
@@ -46,11 +37,15 @@ export const SocketProvider = ({ children }) => {
 
     socket.on("connect", () => setConnected(true));
     socket.on("disconnect", () => setConnected(false));
-    socket.on("user:online", (userId) => {
-      setOnlineUsers((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
+    socket.on("user-online", (userId) => {
+      setOnlineUsers((prev) => new Set(prev).add(userId));
     });
-    socket.on("user:offline", (userId) => {
-      setOnlineUsers((prev) => prev.filter((id) => id !== userId));
+    socket.on("user-offline", (userId) => {
+      setOnlineUsers((prev) => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
     });
 
     return () => {
@@ -60,19 +55,12 @@ export const SocketProvider = ({ children }) => {
     };
   }, [user]);
 
-  const value = useMemo(
-    () => ({
-      socket: socketRef.current,
-      connected,
-      onlineUsers,
-      joinConversation: (conversationId) =>
-        socketRef.current?.emit("conversation:join", conversationId),
-      leaveConversation: (conversationId) =>
-        socketRef.current?.emit("conversation:leave", conversationId),
-      isUserOnline: (userId) => onlineUsers.includes(userId),
-    }),
-    [connected, onlineUsers],
-  );
+  const value = {
+    socket: socketRef.current,
+    connected,
+    onlineUsers,
+    isUserOnline: (userId) => onlineUsers.has(userId),
+  };
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
 };
