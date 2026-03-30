@@ -1,120 +1,194 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Send, SmilePlus } from "lucide-react";
-
-const formatTime = (value) => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-};
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import { format } from "date-fns";
+import { useAuth } from "../../context/AuthContext";
+import { useSocket } from "../../context/SocketContext";
 
 const MessageThread = ({
-  conversation,
-  messages = [],
+  messages,
   onSendMessage,
-  currentUserId = "me",
+  onTyping,
+  onStopTyping,
+  conversationId,
 }) => {
-  const [draft, setDraft] = useState("");
-  const endRef = useRef(null);
+  const { user } = useAuth();
+  const { socket } = useSocket();
+  const messagesEndRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const [newMessage, setNewMessage] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingUser, setTypingUser] = useState(null);
 
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, conversation?.id]);
-
-  const groupedMessages = useMemo(() => messages, [messages]);
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    const content = draft.trim();
-    if (!content) return;
-    onSendMessage?.(content);
-    setDraft("");
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  if (!conversation) {
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Listen for typing events
+  useEffect(() => {
+    if (!socket) return;
+    const handleTyping = ({ userId: uid, conversationId: cid }) => {
+      if (cid === conversationId && uid !== user?._id) setTypingUser(uid);
+    };
+    const handleStopTyping = ({ userId: uid, conversationId: cid }) => {
+      if (cid === conversationId && uid !== user?._id) setTypingUser(null);
+    };
+    socket.on("typing", handleTyping);
+    socket.on("stop-typing", handleStopTyping);
+    return () => {
+      socket.off("typing", handleTyping);
+      socket.off("stop-typing", handleStopTyping);
+    };
+  }, [socket, conversationId, user?._id]);
+
+  const handleInputChange = useCallback(
+    (e) => {
+      setNewMessage(e.target.value);
+      if (onTyping) onTyping();
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        if (onStopTyping) onStopTyping();
+      }, 2000);
+    },
+    [onTyping, onStopTyping],
+  );
+
+  const handleSend = (e) => {
+    e.preventDefault();
+    if (newMessage.trim()) {
+      onSendMessage(newMessage.trim());
+      setNewMessage("");
+      if (onStopTyping) onStopTyping();
+      clearTimeout(typingTimeoutRef.current);
+    }
+  };
+
+  const formatMessageTime = (date) => {
+    try {
+      return format(new Date(date), "MMM dd, hh:mm a");
+    } catch (e) {
+      return "Invalid date";
+    }
+  };
+
+  const renderAttachments = (attachments) => {
+    if (!attachments || attachments.length === 0) return null;
+    const baseUrl =
+      import.meta.env.VITE_API_URL?.replace("/api", "") ||
+      "http://localhost:5000";
     return (
-      <section className="flex h-full items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/5 p-10 text-center text-slate-400">
-        Select a conversation to start messaging.
-      </section>
-    );
-  }
-
-  return (
-    <section className="flex h-full flex-col rounded-2xl border border-white/10 bg-slate-950/50">
-      <div className="border-b border-white/10 px-5 py-4">
-        <h2 className="text-lg font-semibold text-white">{conversation.name}</h2>
-        <p className="text-sm text-slate-400">
-          {conversation.roleLabel || "Connected care messaging"}
-        </p>
-      </div>
-
-      <div className="flex-1 space-y-3 overflow-y-auto p-5">
-        {groupedMessages.map((message) => {
-          const mine = message.senderId === currentUserId;
+      <div className="mt-2 space-y-1">
+        {attachments.map((att, i) => {
+          const url = `${baseUrl}${att.url}`;
+          if (att.type === "image") {
+            return (
+              <img
+                key={i}
+                src={url}
+                alt="attachment"
+                className="max-w-[200px] rounded-md cursor-pointer"
+                onClick={() => window.open(url, "_blank")}
+              />
+            );
+          }
           return (
-            <div
-              key={message.id}
-              className={`flex ${mine ? "justify-end" : "justify-start"}`}
+            <a
+              key={i}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-xs underline"
             >
-              <div
-                className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-sm ${
-                  mine
-                    ? "bg-cyan-500 text-slate-950"
-                    : "border border-white/10 bg-white/5 text-slate-100"
-                }`}
-              >
-                <p className="whitespace-pre-wrap text-sm">{message.content}</p>
-                <div
-                  className={`mt-2 text-right text-[11px] ${
-                    mine ? "text-slate-900/70" : "text-slate-500"
-                  }`}
-                >
-                  {formatTime(message.createdAt)}
-                </div>
-              </div>
-            </div>
+              📎 {att.originalName || "Download file"}
+            </a>
           );
         })}
+      </div>
+    );
+  };
 
-        {groupedMessages.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-6 text-sm text-slate-400">
-            No messages in this thread yet.
+  return (
+    <div className="flex flex-col h-full">
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages && messages.length > 0 ? (
+          messages.map((message) => {
+            const isOwn =
+              message.senderId?._id === user?._id ||
+              message.sender?._id === user?._id;
+            const sender = message.senderId || message.sender;
+            return (
+              <div
+                key={message._id}
+                className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                    isOwn
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/55 text-foreground border border-border"
+                  }`}
+                >
+                  {!isOwn && (
+                    <p className="text-xs font-semibold mb-1">
+                      {sender?.profile?.firstName} {sender?.profile?.lastName}
+                    </p>
+                  )}
+                  <p className="text-sm">{message.content}</p>
+                  {renderAttachments(message.attachments)}
+                  <p
+                    className={`text-xs mt-1 ${
+                      isOwn
+                        ? "text-primary-foreground/75"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {formatMessageTime(message.createdAt)}
+                    {isOwn && message.isRead && (
+                      <span className="ml-2">✓✓</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            No messages yet. Start the conversation!
           </div>
         )}
-
-        <div ref={endRef} />
+        {typingUser && (
+          <div className="flex justify-start">
+            <div className="bg-secondary/55 text-muted-foreground border border-border rounded-lg px-4 py-2 text-sm italic">
+              Typing...
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="border-t border-white/10 bg-black/20 p-4"
-      >
-        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-          <button
-            type="button"
-            className="rounded-full p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"
-            aria-label="Add reaction"
-          >
-            <SmilePlus size={18} />
-          </button>
-
+      {/* Message Input */}
+      <div className="border-t border-border p-4 bg-card">
+        <form onSubmit={handleSend} className="flex space-x-2">
           <input
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            type="text"
+            value={newMessage}
+            onChange={handleInputChange}
             placeholder="Type your message..."
-            className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-500 focus:outline-none"
+            className="flex-1 px-4 py-2 border border-input rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:border-transparent"
           />
-
           <button
             type="submit"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-cyan-500 text-slate-950 transition hover:bg-cyan-400"
-            aria-label="Send message"
+            disabled={!newMessage.trim()}
+            className="btn btn-primary"
           >
-            <Send size={16} />
+            Send
           </button>
-        </div>
-      </form>
-    </section>
+        </form>
+      </div>
+    </div>
   );
 };
 

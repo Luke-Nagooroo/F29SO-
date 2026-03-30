@@ -1,87 +1,97 @@
 import React from "react";
-import { MessageCircle, Search } from "lucide-react";
-
-const getInitials = (name = "") =>
-  name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "?";
-
-const formatTime = (value) => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-};
+import { format } from "date-fns";
 
 const ConversationList = ({
-  conversations = [],
+  conversations,
   selectedConversation,
   onSelectConversation,
-  title = "Conversations",
 }) => {
+  const formatLastMessageTime = (date) => {
+    try {
+      const messageDate = new Date(date);
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      if (messageDate.toDateString() === today.toDateString()) {
+        return format(messageDate, "hh:mm a");
+      } else if (messageDate.toDateString() === yesterday.toDateString()) {
+        return "Yesterday";
+      } else {
+        return format(messageDate, "MMM dd");
+      }
+    } catch (e) {
+      return "";
+    }
+  };
+
   return (
-    <section className="flex h-full flex-col rounded-2xl border border-white/10 bg-white/5 backdrop-blur">
-      <div className="border-b border-white/10 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-white">{title}</h2>
-            <p className="text-sm text-slate-400">
-              {conversations.length} active conversation{conversations.length === 1 ? "" : "s"}
-            </p>
-          </div>
-          <div className="rounded-full border border-white/10 bg-black/20 p-2 text-slate-300">
-            <Search size={16} />
-          </div>
-        </div>
-      </div>
+    <div>
+      {conversations && conversations.length > 0 ? (
+        conversations.map((conversation) => {
+          const otherUser = conversation.participant;
+          const isSelected =
+            selectedConversation?.conversationId === conversation.conversationId;
 
-      <div className="flex-1 overflow-y-auto">
-        {conversations.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-slate-400">
-            <MessageCircle className="text-slate-500" />
-            <p>No conversations yet.</p>
-          </div>
-        ) : (
-          conversations.map((conversation) => {
-            const name = conversation.name || conversation.participant?.name || "Unknown User";
-            const active = selectedConversation?.id === conversation.id;
-
-            return (
-              <button
-                key={conversation.id}
-                type="button"
-                onClick={() => onSelectConversation(conversation)}
-                className={`w-full border-b border-white/5 px-4 py-4 text-left transition ${
-                  active ? "bg-cyan-500/10" : "hover:bg-white/5"
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cyan-500/15 font-semibold text-cyan-200">
-                    {getInitials(name)}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex items-center justify-between gap-3">
-                      <h3 className="truncate text-sm font-semibold text-white">{name}</h3>
-                      <span className="shrink-0 text-xs text-slate-500">
-                        {formatTime(conversation.lastMessageAt)}
-                      </span>
+          return (
+            <div
+              key={conversation.conversationId}
+              onClick={() => onSelectConversation(conversation)}
+              className={`p-4 border-b border-border cursor-pointer hover:bg-secondary/30 transition-colors ${
+                isSelected ? "bg-primary/15" : ""
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center mb-1">
+                    <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold mr-3">
+                      {otherUser?.profile?.firstName?.[0]}
+                      {otherUser?.profile?.lastName?.[0]}
                     </div>
-
-                    <p className="truncate text-sm text-slate-400">
-                      {conversation.lastMessage || "Start the conversation"}
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-foreground truncate">
+                        {otherUser?.profile?.firstName}{" "}
+                        {otherUser?.profile?.lastName}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {otherUser?.role === "provider"
+                          ? otherUser?.profile?.specialization ||
+                            "Healthcare Provider"
+                          : "Patient"}
+                      </p>
+                    </div>
                   </div>
+                  {conversation.lastMessage && (
+                    <p className="text-sm text-muted-foreground truncate ml-13">
+                      {conversation.lastMessage.content}
+                    </p>
+                  )}
                 </div>
-              </button>
-            );
-          })
-        )}
-      </div>
-    </section>
+                {conversation.lastMessage && (
+                  <div className="ml-2 flex flex-col items-end">
+                    <span className="text-xs text-muted-foreground">
+                      {formatLastMessageTime(
+                        conversation.lastMessage.createdAt,
+                      )}
+                    </span>
+                    {conversation.unreadCount > 0 && (
+                      <span className="mt-1 bg-primary text-primary-foreground text-xs rounded-full px-2 py-0.5">
+                        {conversation.unreadCount}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <div className="flex items-center justify-center h-full text-muted-foreground p-4 text-center">
+          No conversations yet. Start by booking an appointment with a
+          healthcare provider.
+        </div>
+      )}
+    </div>
   );
 };
 
