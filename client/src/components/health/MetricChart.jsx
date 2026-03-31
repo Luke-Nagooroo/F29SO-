@@ -1,70 +1,66 @@
 import React from "react";
 import {
-  CartesianGrid,
-  Line,
   LineChart,
-  ResponsiveContainer,
-  Tooltip,
+  Line,
   XAxis,
   YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
 } from "recharts";
+import { format } from "date-fns";
 
-function formatPoint(point) {
-  const label = point?.label || point?.date || "Reading";
-  const value = point?.value;
-  return { label, value };
-}
-
-export default function MetricChart({ data = [], unit = "", height = 260 }) {
-  if (!data.length) {
+const MetricChart = ({ data, metricType, color = "#00a2a2" }) => {
+  if (!data || data.length === 0) {
     return (
-      <div className="flex h-[260px] items-center justify-center rounded-2xl border border-dashed border-border bg-card text-sm text-muted-foreground">
-        No metric data yet.
+      <div className="h-64 flex items-center justify-center text-gray-500">
+        No data available
       </div>
     );
   }
 
-  const chartData = data.map(formatPoint);
+  // Format data for chart
+  const chartData = data.map((item) => ({
+    date: format(new Date(item.timestamp), "MM/dd"),
+    value: typeof item.value === "object" ? item.value.systolic : item.value,
+    fullDate: format(new Date(item.timestamp), "MMM dd, yyyy HH:mm"),
+  }));
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <div className="mb-4">
-        <h3 className="text-base font-semibold text-foreground">Metric Trend</h3>
-        <p className="text-sm text-muted-foreground">
-          Recent readings visualized over time.
-        </p>
-      </div>
-
-      <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip
-            content={({ active, payload }) => {
-              if (!active || !payload?.length) return null;
+    <ResponsiveContainer width="100%" height={300}>
+      <LineChart data={chartData}>
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+        <XAxis dataKey="date" tick={{ fill: "hsl(var(--muted-foreground))" }} />
+        <YAxis tick={{ fill: "hsl(var(--muted-foreground))" }} />
+        <Tooltip
+          cursor={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
+          content={({ active, payload }) => {
+            if (active && payload && payload.length) {
               return (
-                <div className="rounded-xl border border-border bg-background px-3 py-2 shadow-lg">
-                  <p className="text-xs text-muted-foreground">
-                    {payload[0].payload.label}
+                <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
+                  <p className="text-sm text-muted-foreground">
+                    {payload[0].payload.fullDate}
                   </p>
-                  <p className="text-sm font-semibold text-foreground">
-                    {payload[0].value} {unit}
+                  <p className="text-lg font-bold text-primary">
+                    {payload[0].value} {data[0]?.unit}
                   </p>
                 </div>
               );
-            }}
-          />
-          <Line
-            type="monotone"
-            dataKey="value"
-            stroke="hsl(var(--primary))"
-            strokeWidth={2.5}
-            dot={{ r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+            }
+            return null;
+          }}
+        />
+        <Line
+          type="monotone"
+          dataKey="value"
+          stroke={color}
+          strokeWidth={2}
+          dot={{ fill: color, r: 4 }}
+          activeDot={{ r: 6 }}
+        />
+      </LineChart>
+    </ResponsiveContainer>
   );
-}
+};
+
+export default MetricChart;

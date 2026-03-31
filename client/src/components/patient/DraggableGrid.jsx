@@ -1,60 +1,89 @@
-import React, { useMemo, useState } from "react";
-import GridLayout from "react-grid-layout";
+import React, { useState, useCallback } from "react";
+import { ResponsiveGridLayout, useContainerWidth } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
-const STORAGE_KEY = "vhc-patient-layout";
+/**
+ * Persistent key for saving layouts to localStorage.
+ */
+const STORAGE_KEY = "medxi_metrics_layout";
 
-function loadLayout() {
-  if (typeof window === "undefined") return null;
+/**
+ * Wrapper that makes child widgets draggable and resizable.
+ *
+ * Each child MUST have a unique `key` prop and optionally
+ * a `data-grid` prop with { x, y, w, h, minW, minH }.
+ */
+export default function DraggableGrid({
+  children,
+  cols = { lg: 4, md: 3, sm: 2, xs: 1 },
+  rowHeight = 220,
+  className = "",
+  compactType = "vertical",
+  isResizable = true,
+  isDraggable = true,
+  persistLayout = true,
+  onDragStart,
+  onDragStop,
+  onLayoutChange: onLayoutChangeProp,
+}) {
+  // useContainerWidth returns { width, mounted, containerRef, measureWidth }
+  const { width, mounted, containerRef } = useContainerWidth({
+    initialWidth: 1280,
+  });
 
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : null;
-  } catch {
-    return null;
-  }
-}
+  // Try to load saved layout from localStorage (only when persistence is enabled)
+  const [savedLayouts, setSavedLayouts] = useState(() => {
+    if (!persistLayout) return {};
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
 
-export default function DraggableGrid({ children, rowHeight = 176, cols = 12 }) {
-  const defaultLayout = useMemo(
-    () =>
-      React.Children.toArray(children).map((child, index) => ({
-        i: String(child.key ?? index),
-        x: (index % 2) * 6,
-        y: Math.floor(index / 2),
-        w: 6,
-        h: 1,
-      })),
-    [children],
+  const handleLayoutChange = useCallback(
+    (layout, allLayouts) => {
+      // Notify parent with the single-breakpoint layout
+      if (onLayoutChangeProp) onLayoutChangeProp(layout);
+
+      if (!persistLayout) return;
+      setSavedLayouts(allLayouts);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(allLayouts));
+      } catch {
+        /* storage full — ignore */
+      }
+    },
+    [persistLayout, onLayoutChangeProp],
   );
 
-  const [layout, setLayout] = useState(() => loadLayout() || defaultLayout);
-
-  const handleLayoutChange = (nextLayout) => {
-    setLayout(nextLayout);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextLayout));
-    }
-  };
-
   return (
-    <GridLayout
-      className="layout"
-      layout={layout}
-      cols={cols}
-      rowHeight={rowHeight}
-      width={1120}
-      margin={[16, 16]}
-      onLayoutChange={handleLayoutChange}
-      draggableHandle=".drag-handle"
-    >
-      {React.Children.map(children, (child) => (
-        <div key={child.key} className="rounded-[1.75rem]">
-          {child}
-        </div>
-      ))}
-    </GridLayout>
+    <div ref={containerRef} className={`dashboard-grid ${className}`}>
+      {mounted && width > 0 && (
+        <ResponsiveGridLayout
+          width={width}
+          layouts={
+            persistLayout && Object.keys(savedLayouts).length > 0
+              ? savedLayouts
+              : undefined
+          }
+          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
+          cols={cols}
+          rowHeight={rowHeight}
+          compactType={compactType}
+          isResizable={isResizable}
+          isDraggable={isDraggable}
+          onLayoutChange={handleLayoutChange}
+          onDragStart={onDragStart}
+          onDragStop={onDragStop}
+          margin={[16, 16]}
+          containerPadding={[0, 0]}
+        >
+          {children}
+        </ResponsiveGridLayout>
+      )}
+    </div>
   );
 }

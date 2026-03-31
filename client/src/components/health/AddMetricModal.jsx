@@ -1,122 +1,198 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
+import { healthMetricsAPI } from "../../api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const metricOptions = {
-  heartRate: { label: "Heart Rate", unit: "bpm", placeholder: "72" },
-  bloodPressure: {
-    label: "Blood Pressure",
-    unit: "mmHg",
-    placeholder: "120/80",
-  },
-  bloodGlucose: { label: "Blood Glucose", unit: "mg/dL", placeholder: "100" },
-  weight: { label: "Weight", unit: "kg", placeholder: "70" },
-  temperature: { label: "Temperature", unit: "°C", placeholder: "36.8" },
-};
-
-export default function AddMetricModal({ isOpen, onClose, onSave }) {
-  const [form, setForm] = useState({
+const AddMetricModal = ({ isOpen, onClose, onSuccess }) => {
+  const [formData, setFormData] = useState({
     metricType: "heartRate",
     value: "",
+    unit: "bpm",
     notes: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const selectedMetric = useMemo(
-    () => metricOptions[form.metricType],
-    [form.metricType],
-  );
-
-  const handleChange = (field, value) => {
-    setForm((current) => ({ ...current, [field]: value }));
+  const metricTypes = {
+    heartRate: { label: "Heart Rate", unit: "bpm", placeholder: "75" },
+    bloodPressure: {
+      label: "Blood Pressure",
+      unit: "mmHg",
+      placeholder: "120/80",
+    },
+    bloodGlucose: { label: "Blood Glucose", unit: "mg/dL", placeholder: "100" },
+    weight: { label: "Weight", unit: "kg", placeholder: "70" },
+    temperature: { label: "Temperature", unit: "°C", placeholder: "37" },
+    oxygenSaturation: {
+      label: "Oxygen Saturation",
+      unit: "%",
+      placeholder: "98",
+    },
+    steps: { label: "Steps", unit: "steps", placeholder: "10000" },
+    sleep: { label: "Sleep", unit: "hours", placeholder: "8" },
+    calories: { label: "Calories", unit: "kcal", placeholder: "2000" },
+    waterIntake: { label: "Water Intake", unit: "ml", placeholder: "2000" },
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const handleMetricTypeChange = (type) => {
+    setFormData({
+      ...formData,
+      metricType: type,
+      unit: metricTypes[type].unit,
+      value: "",
+    });
+  };
 
-    if (!form.value.trim()) return;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    const payload = {
-      metricType: form.metricType,
-      value: form.value,
-      unit: selectedMetric.unit,
-      notes: form.notes.trim(),
-      source: "manual",
-    };
+    try {
+      let processedValue = formData.value;
 
-    onSave?.(payload);
-    setForm({ metricType: "heartRate", value: "", notes: "" });
-    onClose?.();
+      // Handle blood pressure (split into systolic/diastolic)
+      if (formData.metricType === "bloodPressure") {
+        const [systolic, diastolic] = formData.value
+          .split("/")
+          .map((v) => parseInt(v.trim()));
+        if (!systolic || !diastolic) {
+          setError("Blood pressure must be in format: 120/80");
+          setLoading(false);
+          return;
+        }
+        processedValue = { systolic, diastolic };
+      } else {
+        processedValue = parseFloat(formData.value);
+        if (isNaN(processedValue)) {
+          setError("Please enter a valid number");
+          setLoading(false);
+          return;
+        }
+      }
+
+      await healthMetricsAPI.create({
+        metricType: formData.metricType,
+        value: processedValue,
+        unit: formData.unit,
+        notes: formData.notes,
+        source: "manual",
+      });
+
+      onSuccess();
+      onClose();
+      setFormData({
+        metricType: "heartRate",
+        value: "",
+        unit: "bpm",
+        notes: "",
+      });
+    } catch (error) {
+      setError(error.response?.data?.message || "Failed to add metric");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">Add Metric</h2>
-            <p className="text-sm text-muted-foreground">
-              Log a new health reading manually.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-2xl leading-none text-muted-foreground hover:text-foreground"
-          >
-            ×
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="metricType">Metric Type</Label>
-            <select
-              id="metricType"
-              value={form.metricType}
-              onChange={(event) => handleChange("metricType", event.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none"
+    <div className="fixed inset-0 bg-background/70 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-card border border-border rounded-2xl shadow-xl max-w-md w-full mx-4">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-2xl font-bold text-foreground">
+              Add Health Metric
+            </h3>
+            <button
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground text-2xl"
             >
-              {Object.entries(metricOptions).map(([key, option]) => (
-                <option key={key} value={key}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              ×
+            </button>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="metricValue">Value ({selectedMetric.unit})</Label>
-            <Input
-              id="metricValue"
-              value={form.value}
-              onChange={(event) => handleChange("value", event.target.value)}
-              placeholder={selectedMetric.placeholder}
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="bg-danger-light border border-danger text-danger-dark px-4 py-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
 
-          <div className="space-y-2">
-            <Label htmlFor="metricNotes">Notes</Label>
-            <textarea
-              id="metricNotes"
-              rows="3"
-              value={form.notes}
-              onChange={(event) => handleChange("notes", event.target.value)}
-              placeholder="Optional context about this reading"
-              className="flex min-h-[96px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none"
-            />
-          </div>
+            <div>
+              <Label className="mb-2">Metric Type</Label>
+              <Select
+                value={formData.metricType}
+                onValueChange={handleMetricTypeChange}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Select metric" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(metricTypes).map(([key, { label }]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit">Save Metric</Button>
-          </div>
-        </form>
+            <div>
+              <Label className="mb-2">
+                Value ({metricTypes[formData.metricType].unit})
+              </Label>
+              <Input
+                type="text"
+                className="h-11"
+                placeholder={metricTypes[formData.metricType].placeholder}
+                value={formData.value}
+                onChange={(e) =>
+                  setFormData({ ...formData, value: e.target.value })
+                }
+                required
+              />
+            </div>
+
+            <div>
+              <Label className="mb-2">Notes (Optional)</Label>
+              <textarea
+                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
+                rows="3"
+                placeholder="Any additional notes..."
+                value={formData.notes}
+                onChange={(e) =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
+              />
+            </div>
+
+            <div className="flex space-x-3 pt-4">
+              <Button
+                type="button"
+                onClick={onClose}
+                variant="secondary"
+                className="flex-1 h-11"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading} className="flex-1 h-11">
+                {loading ? "Adding..." : "Add Metric"}
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default AddMetricModal;
