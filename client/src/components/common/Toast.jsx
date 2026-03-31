@@ -1,43 +1,116 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 
-const toneClasses = {
-  success: "border-emerald-200 bg-emerald-50 text-emerald-900",
-  error: "border-rose-200 bg-rose-50 text-rose-900",
-  info: "border-sky-200 bg-sky-50 text-sky-900",
-  warning: "border-amber-200 bg-amber-50 text-amber-900",
-};
-
-function Toast({ message, type = "info", onClose, duration = 3000 }) {
+const Toast = ({ message, type = "success", onClose, duration = 3000 }) => {
   useEffect(() => {
-    if (!onClose) return undefined;
-    const timer = window.setTimeout(() => {
+    const timer = setTimeout(() => {
       onClose();
     }, duration);
 
-    return () => window.clearTimeout(timer);
+    return () => clearTimeout(timer);
   }, [duration, onClose]);
 
+  const bgColors = {
+    success: "bg-green-500",
+    error: "bg-red-500",
+    info: "bg-blue-500",
+    warning: "bg-yellow-500",
+  };
+
+  const icons = {
+    success: (
+      <svg
+        className="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M5 13l4 4L19 7"
+        />
+      </svg>
+    ),
+    error: (
+      <svg
+        className="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M6 18L18 6M6 6l12 12"
+        />
+      </svg>
+    ),
+    info: (
+      <svg
+        className="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    ),
+    warning: (
+      <svg
+        className="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+        />
+      </svg>
+    ),
+  };
+
   return (
-    <div
-      className={`w-full rounded-xl border px-4 py-3 shadow-lg ${toneClasses[type] ?? toneClasses.info}`}
-      role="status"
-      aria-live="polite"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold capitalize">{type}</p>
-          <p className="mt-1 text-sm opacity-90">{message}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-md px-2 py-1 text-xs font-medium hover:bg-black/5"
+    <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+      <div className="pointer-events-auto animate-fade-in-up">
+        <div
+          className={`${bgColors[type]} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center space-x-3 min-w-[320px] max-w-md`}
         >
-          Close
-        </button>
+          <div className="flex-shrink-0">{icons[type]}</div>
+          <div className="flex-1">
+            <p className="text-sm font-medium">{message}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex-shrink-0 ml-4 hover:bg-white hover:bg-opacity-20 rounded p-1 transition-colors"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   );
-}
+};
 
 export default Toast;

@@ -21,6 +21,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["patient", "provider", "admin"],
       default: "patient",
+      required: true,
     },
     profile: {
       firstName: {
@@ -33,34 +34,139 @@ const userSchema = new mongoose.Schema(
         required: [true, "Last name is required"],
         trim: true,
       },
+      dateOfBirth: {
+        type: Date,
+        required: function () {
+          return this.role === "patient";
+        },
+      },
+      gender: {
+        type: String,
+        enum: ["male", "female", "other", "prefer-not-to-say"],
+      },
       phone: {
         type: String,
         trim: true,
+      },
+      address: {
+        street: String,
+        city: String,
+        state: String,
+        zipCode: String,
+        country: String,
+      },
+      avatar: {
+        type: String,
+        default: null,
+      },
+    },
+    // Provider-specific fields
+    providerInfo: {
+      specialization: {
+        type: String,
+        required: function () {
+          return this.role === "provider";
+        },
+      },
+      licenseNumber: String,
+      yearsOfExperience: Number,
+      bio: String,
+      availability: [
+        {
+          day: {
+            type: String,
+            enum: [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+              "Sunday",
+            ],
+          },
+          startTime: String,
+          endTime: String,
+        },
+      ],
+    },
+    // Patient-specific fields
+    patientInfo: {
+      emergencyContact: {
+        name: String,
+        relationship: String,
+        phone: String,
+      },
+      bloodType: {
+        type: String,
+        enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+      },
+      allergies: [String],
+      medications: [String],
+      medicalHistory: [String],
+    },
+    privacySettings: {
+      shareDataWithProviders: {
+        type: Boolean,
+        default: true,
+      },
+      allowNotifications: {
+        type: Boolean,
+        default: true,
+      },
+    },
+    uiPreferences: {
+      theme: {
+        type: String,
+        enum: ["crimson", "medical", "midnight", "emerald"],
+        default: "midnight",
+      },
+      mode: {
+        type: String,
+        enum: ["light", "dark"],
+        default: "light",
       },
     },
     isActive: {
       type: Boolean,
       default: true,
     },
-    lastLogin: {
-      type: Date,
-      default: null,
-    },
+    lastLogin: Date,
     refreshToken: {
       type: String,
       select: false,
     },
+    // Email verification
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: {
+      type: String,
+      select: false,
+    },
+    emailVerificationExpires: {
+      type: Date,
+      select: false,
+    },
+    // Password reset
+    passwordResetToken: {
+      type: String,
+      select: false,
+    },
+    passwordResetExpires: {
+      type: Date,
+      select: false,
+    },
+    // Google Fit Integration
     googleFitConnected: {
       type: Boolean,
       default: false,
     },
-    googleFitConnectedAt: {
-      type: Date,
-      default: null,
-    },
-    googleFitLastSyncAt: {
-      type: Date,
-      default: null,
+    googleFitTokens: {
+      accessToken: String,
+      refreshToken: String,
+      expiryDate: Number,
     },
   },
   {
@@ -68,6 +174,7 @@ const userSchema = new mongoose.Schema(
   },
 );
 
+// Hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
@@ -80,14 +187,17 @@ userSchema.pre("save", async function (next) {
   }
 });
 
+// Compare password method
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+  return await bcrypt.compare(candidatePassword, this.password);
 };
 
+// Get full name
 userSchema.virtual("fullName").get(function () {
   return `${this.profile.firstName} ${this.profile.lastName}`;
 });
 
+// Remove sensitive data from JSON output
 userSchema.methods.toJSON = function () {
   const user = this.toObject();
   delete user.password;
@@ -96,4 +206,6 @@ userSchema.methods.toJSON = function () {
   return user;
 };
 
-module.exports = mongoose.model("User", userSchema);
+const User = mongoose.model("User", userSchema);
+
+module.exports = User;
