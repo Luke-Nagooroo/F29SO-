@@ -1,80 +1,102 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Search, Users } from "lucide-react";
 import PatientDetailPanel from "./PatientDetailPanel";
-import { Card, CardContent } from "../ui/card";
+import { cn } from "@/lib/utils";
 
-function PatientsTab({ patients = [] }) {
+const PatientsTab = ({ patients }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPatient, setSelectedPatient] = useState(null);
 
-  const filteredPatients = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    if (!query) return patients;
-
-    return patients.filter((patient) => {
-      return [patient.fullName, patient.condition, patient.email]
-        .filter(Boolean)
-        .some((field) => field.toLowerCase().includes(query));
-    });
-  }, [patients, searchTerm]);
+  const filteredPatients = (patients || []).filter((p) => {
+    if (!searchTerm) return true;
+    const name =
+      `${p.profile?.firstName} ${p.profile?.lastName}`.toLowerCase();
+    const email = (p.email || "").toLowerCase();
+    const term = searchTerm.toLowerCase();
+    return name.includes(term) || email.includes(term);
+  });
 
   if (selectedPatient) {
-    return <PatientDetailPanel patient={selectedPatient} onBack={() => setSelectedPatient(null)} />;
+    return (
+      <PatientDetailPanel
+        patient={selectedPatient}
+        onBack={() => setSelectedPatient(null)}
+      />
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    <div>
+      {/* Search */}
+      <div className="mb-6 relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <input
           type="text"
+          placeholder="Search patients by name or email..."
           value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
-          placeholder="Search patients by name, condition, or email"
-          className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:border-transparent"
         />
       </div>
 
+      {/* Patient Grid */}
       {filteredPatients.length === 0 ? (
-        <Card className="rounded-[24px]">
-          <CardContent className="flex flex-col items-center justify-center gap-3 py-14 text-center">
-            <Users className="h-10 w-10 text-slate-300" />
-            <div>
-              <p className="text-lg font-semibold text-slate-900">No matching patients</p>
-              <p className="mt-1 text-sm text-slate-500">Try a broader search or clear the current query.</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="text-center py-12">
+          <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
+          <h3 className="text-lg font-semibold text-foreground mb-1">
+            {patients?.length === 0 ? "No Patients Yet" : "No Results"}
+          </h3>
+          <p className="text-muted-foreground text-sm">
+            {patients?.length === 0
+              ? "Patients will appear here once appointments are booked."
+              : "No patients match your search."}
+          </p>
+        </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredPatients.map((patient) => (
-            <button
-              key={patient.id}
-              type="button"
+            <div
+              key={patient._id}
               onClick={() => setSelectedPatient(patient)}
-              className="rounded-[24px] border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md"
+              className={cn(
+                "p-4 rounded-xl border border-border bg-card cursor-pointer transition-all hover:shadow-md hover:border-primary/30",
+              )}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-lg font-semibold text-slate-900">{patient.fullName}</p>
-                  <p className="mt-1 text-sm text-slate-500">{patient.condition}</p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
+                  {patient.profile?.firstName?.[0]}
+                  {patient.profile?.lastName?.[0]}
                 </div>
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                  {patient.bloodType}
-                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-foreground truncate">
+                    {patient.profile?.firstName} {patient.profile?.lastName}
+                  </p>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {patient.email}
+                  </p>
+                </div>
               </div>
-
-              <div className="mt-4 space-y-2 text-sm text-slate-600">
-                <p>{patient.email}</p>
-                <p>Recent metric: {patient.recentMetric.label} · {patient.recentMetric.value}</p>
-                <p>Last visit: {patient.lastVisit}</p>
-              </div>
-            </button>
+              {(patient.patientInfo?.bloodType ||
+                patient.patientInfo?.allergies?.length > 0) && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {patient.patientInfo?.bloodType && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                      {patient.patientInfo.bloodType}
+                    </span>
+                  )}
+                  {patient.patientInfo?.allergies?.length > 0 && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                      {patient.patientInfo.allergies.length} allergy(ies)
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}
     </div>
   );
-}
+};
 
 export default PatientsTab;
