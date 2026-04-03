@@ -18,19 +18,25 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Check if user is logged in on mount
     const initAuth = async () => {
-      const token = localStorage.getItem("accessToken");
       const savedUser = localStorage.getItem("user");
 
-      if (token && savedUser) {
+      if (savedUser) {
         try {
           setUser(JSON.parse(savedUser));
-          // Optionally verify token with backend
           const response = await authAPI.getCurrentUser();
           setUser(response.data.data);
           localStorage.setItem("user", JSON.stringify(response.data.data));
         } catch (error) {
           console.error("Auth initialization error:", error);
           logout();
+        }
+      } else {
+        try {
+          const response = await authAPI.getCurrentUser();
+          setUser(response.data.data);
+          localStorage.setItem("user", JSON.stringify(response.data.data));
+        } catch (error) {
+          localStorage.removeItem("user");
         }
       }
       setLoading(false);
@@ -41,10 +47,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     const response = await authAPI.login(credentials);
-    const { user, accessToken, refreshToken } = response.data.data;
-
-    localStorage.setItem("accessToken", accessToken);
-    localStorage.setItem("refreshToken", refreshToken);
+    const { user } = response.data.data;
     localStorage.setItem("user", JSON.stringify(user));
 
     setUser(user);
@@ -53,20 +56,14 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     const response = await authAPI.register(userData);
-    const { user, accessToken, refreshToken } = response.data.data;
-
-    localStorage.setItem("accessToken", accessToken);
-    localStorage.setItem("refreshToken", refreshToken);
+    const { user } = response.data.data;
     localStorage.setItem("user", JSON.stringify(user));
 
     setUser(user);
     return user;
   };
 
-  const completeOAuthLogin = async ({ accessToken, refreshToken }) => {
-    localStorage.setItem("accessToken", accessToken);
-    localStorage.setItem("refreshToken", refreshToken);
-
+  const completeOAuthLogin = async () => {
     const response = await authAPI.getCurrentUser();
     const currentUser = response.data.data;
 
@@ -81,8 +78,6 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
       sessionStorage.removeItem("medxi_splash_shown");
       setUser(null);

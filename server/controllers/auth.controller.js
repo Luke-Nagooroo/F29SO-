@@ -24,6 +24,25 @@ const oauthClient = new google.auth.OAuth2(
 );
 
 const GOOGLE_SCOPES = ["openid", "email", "profile"];
+const isProduction = process.env.NODE_ENV === "production";
+
+const getCookieOptions = (maxAge) => ({
+  httpOnly: true,
+  sameSite: isProduction ? "none" : "lax",
+  secure: isProduction,
+  path: "/",
+  maxAge,
+});
+
+const setAuthCookies = (res, accessToken, refreshToken) => {
+  res.cookie("accessToken", accessToken, getCookieOptions(60 * 60 * 1000));
+  res.cookie("refreshToken", refreshToken, getCookieOptions(7 * 24 * 60 * 60 * 1000));
+};
+
+const clearAuthCookies = (res) => {
+  res.clearCookie("accessToken", getCookieOptions());
+  res.clearCookie("refreshToken", getCookieOptions());
+};
 
 const parseName = (fullName = "") => {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -173,8 +192,10 @@ const handleGoogleCallback = async (req, res) => {
     const oauthStatus =
       mode === "signup" && isNewUser ? "needs_password" : "success";
 
+    setAuthCookies(res, accessToken, refreshToken);
+
     return res.redirect(
-      `${clientUrl}${oauthTarget}?oauth=${oauthStatus}&accessToken=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(refreshToken)}&redirect=${encodeURIComponent(redirectPath)}`,
+      `${clientUrl}${oauthTarget}?oauth=${oauthStatus}&redirect=${encodeURIComponent(redirectPath)}`,
     );
   } catch (error) {
     console.error("Google callback error:", error);
@@ -401,6 +422,8 @@ const register = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
+    setAuthCookies(res, accessToken, refreshToken);
+
     // Log registration
     await createAuditLog(user._id, user.role, "register", {
       ipAddress: req.ip,
@@ -468,6 +491,8 @@ const login = async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
+    setAuthCookies(res, accessToken, refreshToken);
+
     // Log login
     await createAuditLog(user._id, user.role, "login", {
       ipAddress: req.ip,
@@ -501,7 +526,7 @@ const login = async (req, res) => {
  */
 const refreshAccessToken = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = req.body?.refreshToken || req.cookies?.refreshToken;
 
     if (!refreshToken) {
       return res.status(400).json({
@@ -529,6 +554,7 @@ const refreshAccessToken = async (req, res) => {
 
     // Generate new access token
     const newAccessToken = generateAccessToken(user._id, user.role);
+    res.cookie("accessToken", newAccessToken, getCookieOptions(60 * 60 * 1000));
 
     res.json({
       success: true,
@@ -560,6 +586,8 @@ const logout = async (req, res) => {
         userAgent: req.headers["user-agent"],
       });
     }
+
+    clearAuthCookies(res);
 
     res.json({
       success: true,

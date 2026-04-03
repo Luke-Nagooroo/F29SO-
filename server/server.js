@@ -35,6 +35,19 @@ const corsOriginDelegate = (origin, callback) => {
   return callback(new Error(`Not allowed by CORS: ${origin}`));
 };
 
+const getCookieValue = (cookieHeader, name) => {
+  if (!cookieHeader) return null;
+
+  for (const part of cookieHeader.split(";")) {
+    const [rawKey, ...rest] = part.trim().split("=");
+    if (rawKey === name) {
+      return decodeURIComponent(rest.join("="));
+    }
+  }
+
+  return null;
+};
+
 // Socket.io
 const io = new Server(httpServer, {
   cors: { origin: corsOriginDelegate, credentials: true },
@@ -42,7 +55,9 @@ const io = new Server(httpServer, {
 
 // Socket.io auth middleware
 io.use((socket, next) => {
-  const token = socket.handshake.auth?.token;
+  const token =
+    socket.handshake.auth?.token ||
+    getCookieValue(socket.handshake.headers?.cookie, "accessToken");
   if (!token) return next(new Error("Authentication required"));
   const decoded = verifyToken(token);
   if (!decoded) return next(new Error("Invalid token"));

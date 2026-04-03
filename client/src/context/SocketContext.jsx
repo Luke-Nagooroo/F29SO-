@@ -23,13 +23,10 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
-    const token = localStorage.getItem("accessToken");
-    if (!token) return;
-
     const serverUrl = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000";
 
     const socket = io(serverUrl, {
-      auth: { token },
+      withCredentials: true,
       transports: ["websocket", "polling"],
     });
 

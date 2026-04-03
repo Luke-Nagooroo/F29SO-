@@ -80,19 +80,11 @@ const Register = () => {
         return;
       }
 
-      const accessToken = params.get("accessToken");
-      const refreshToken = params.get("refreshToken");
       const redirect = params.get("redirect") || "/dashboard";
-
-      if (!accessToken || !refreshToken) {
-        setError("Google signup failed. Missing authentication tokens.");
-        navigate("/register", { replace: true });
-        return;
-      }
 
       try {
         setLoading(true);
-        await completeOAuthLogin({ accessToken, refreshToken });
+        await completeOAuthLogin();
 
         if (oauthStatus === "needs_password") {
           sessionStorage.setItem("googlePasswordSetupPending", "1");

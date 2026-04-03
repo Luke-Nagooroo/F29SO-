@@ -7,15 +7,19 @@ const User = require("../models/User.model");
 const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
+    const cookieToken = req.cookies?.accessToken;
+    const bearerToken =
+      authHeader && authHeader.startsWith("Bearer ")
+        ? authHeader.split(" ")[1]
+        : null;
+    const token = bearerToken || cookieToken;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!token) {
       return res.status(401).json({
         success: false,
         message: "No token provided",
       });
     }
-
-    const token = authHeader.split(" ")[1];
     const decoded = verifyToken(token);
 
     if (!decoded) {

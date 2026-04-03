@@ -65,19 +65,11 @@ const Login = () => {
         return;
       }
 
-      const accessToken = params.get("accessToken");
-      const refreshToken = params.get("refreshToken");
       const redirect = params.get("redirect");
-
-      if (!accessToken || !refreshToken) {
-        setError("Google sign-in failed. Missing authentication tokens.");
-        navigate("/login", { replace: true });
-        return;
-      }
 
       try {
         setLoading(true);
-        const user = await completeOAuthLogin({ accessToken, refreshToken });
+        const user = await completeOAuthLogin();
 
         const dashboardMap = {
           patient: "/dashboard",
