@@ -19,13 +19,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { healthMetricsAPI } from "@/api";
 
-/* ─── Demo data generator helpers ─── */
 const randomBetween = (min, max) =>
   Math.floor(Math.random() * (max - min + 1)) + min;
 
-// Occasionally produce critical values to demonstrate alerts
 const generateDemoMetrics = () => {
-  const isCritical = Math.random() < 0.15; // 15% chance of critical reading
+  const isCritical = Math.random() < 0.15;
 
   const heartRate = isCritical
     ? randomBetween(125, 155)
@@ -55,7 +53,6 @@ const generateDemoMetrics = () => {
   };
 };
 
-/* ─── Single Metric Live Card ─── */
 const LiveMetricCard = ({
   icon: Icon,
   label,
@@ -70,7 +67,7 @@ const LiveMetricCard = ({
     initial={{ opacity: 0, scale: 0.95 }}
     animate={{ opacity: 1, scale: 1 }}
     className={cn(
-      "relative rounded-2xl p-5 transition-all duration-300 overflow-hidden",
+      "relative overflow-hidden rounded-2xl p-5 transition-all duration-300",
       isCritical
         ? "bg-destructive/8 ring-2 ring-destructive/40"
         : "bg-card shadow-md shadow-black/5",
@@ -83,30 +80,32 @@ const LiveMetricCard = ({
         transition={{ duration: 1.5, repeat: Infinity }}
       />
     )}
+
     <div className="relative z-10">
-      <div className="flex items-center gap-2 mb-3">
+      <div className="mb-3 flex items-center gap-2">
         <div
           className={cn(
-            "w-9 h-9 rounded-xl flex items-center justify-center",
+            "flex h-9 w-9 items-center justify-center rounded-xl",
             isCritical ? "bg-destructive/15" : "bg-primary/10",
           )}
         >
           <Icon
-            className="w-[18px] h-[18px]"
+            className="h-[18px] w-[18px]"
             style={{ color: isCritical ? undefined : color }}
           />
         </div>
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           {label}
         </span>
         {isCritical && (
-          <AlertTriangle className="w-4 h-4 text-destructive ml-auto" />
+          <AlertTriangle className="ml-auto h-4 w-4 text-destructive" />
         )}
       </div>
-      <div className="flex items-baseline gap-1.5">
+
+      <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
         <span
           className={cn(
-            "text-3xl font-bold tabular-nums",
+            "text-2xl font-bold tabular-nums sm:text-3xl",
             isCritical ? "text-destructive" : "text-foreground",
           )}
         >
@@ -114,8 +113,9 @@ const LiveMetricCard = ({
         </span>
         <span className="text-sm text-muted-foreground">{unit}</span>
       </div>
+
       {pulse && (
-        <div className="mt-2 h-1 w-full rounded-full bg-muted overflow-hidden">
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted">
           <motion.div
             className="h-full rounded-full bg-primary"
             animate={{ width: ["0%", "100%"] }}
@@ -127,7 +127,6 @@ const LiveMetricCard = ({
   </motion.div>
 );
 
-/* ─── Main WearableDevices Component ─── */
 const WearableDevices = ({
   isSimulating,
   simulatorData,
@@ -141,7 +140,6 @@ const WearableDevices = ({
   const [criticalLog, setCriticalLog] = useState([]);
   const intervalRef = useRef(null);
 
-  // Generate fresh demo data every 5s when simulating
   useEffect(() => {
     if (!isSimulating) {
       setDemoData(null);
@@ -173,7 +171,6 @@ const WearableDevices = ({
         ]);
       }
 
-      // Push to server (best-effort)
       const serverMetrics = [
         {
           metricType: "heartRate",
@@ -212,6 +209,7 @@ const WearableDevices = ({
           source: "simulator",
         },
       ];
+
       serverMetrics.forEach((m) => healthMetricsAPI.create(m).catch(() => {}));
     };
 
@@ -222,53 +220,54 @@ const WearableDevices = ({
 
   return (
     <div className="space-y-6">
-      {/* ─── Simulator Control Card ─── */}
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-primary/8 to-transparent">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-primary/12 flex items-center justify-center">
-                <Radio className="w-6 h-6 text-primary" />
+          <div className="flex flex-col gap-4 bg-gradient-to-r from-primary/8 to-transparent px-4 py-5 sm:px-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex min-w-0 items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/12">
+                <Radio className="h-6 w-6 text-primary" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <h3 className="text-lg font-semibold text-foreground">
                   Demo Wearable Simulator
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="max-w-md text-sm text-muted-foreground">
                   Streams real-time vitals including occasional critical
                   readings
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">
               <div
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium",
+                  "flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium",
                   isSimulating
                     ? "bg-emerald-500/15 text-emerald-600"
                     : "bg-muted text-muted-foreground",
                 )}
               >
                 {isSimulating ? (
-                  <Wifi className="w-3 h-3" />
+                  <Wifi className="h-3 w-3" />
                 ) : (
-                  <WifiOff className="w-3 h-3" />
+                  <WifiOff className="h-3 w-3" />
                 )}
                 {isSimulating ? "Streaming" : "Offline"}
               </div>
+
               <Button
                 size="sm"
                 variant={isSimulating ? "destructive" : "default"}
                 onClick={isSimulating ? onStopSimulator : onStartSimulator}
-                className="gap-2 min-w-[120px]"
+                className="gap-2 sm:min-w-[140px]"
               >
                 {isSimulating ? (
                   <>
-                    <Square className="w-3.5 h-3.5" /> Stop
+                    <Square className="h-3.5 w-3.5" /> Stop
                   </>
                 ) : (
                   <>
-                    <Play className="w-3.5 h-3.5" /> Start Demo
+                    <Play className="h-3.5 w-3.5" /> Start Demo
                   </>
                 )}
               </Button>
@@ -276,11 +275,11 @@ const WearableDevices = ({
           </div>
 
           {isSimulating && (
-            <div className="px-6 py-2 border-t border-border/50 flex items-center gap-4 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/50 px-4 py-3 text-xs text-muted-foreground sm:px-6">
               <span>Updates: {tickCount}</span>
               <span>
                 Critical events:{" "}
-                <span className="text-destructive font-semibold">
+                <span className="font-semibold text-destructive">
                   {criticalLog.length}
                 </span>
               </span>
@@ -289,7 +288,6 @@ const WearableDevices = ({
         </CardContent>
       </Card>
 
-      {/* ─── Live Vitals Grid ─── */}
       <AnimatePresence>
         {isSimulating && demoData && (
           <motion.div
@@ -297,10 +295,11 @@ const WearableDevices = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
           >
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               Live Vitals
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
               <LiveMetricCard
                 icon={Heart}
                 label="Heart Rate"
@@ -356,7 +355,6 @@ const WearableDevices = ({
         )}
       </AnimatePresence>
 
-      {/* ─── Critical Events Log ─── */}
       <AnimatePresence>
         {criticalLog.length > 0 && (
           <motion.div
@@ -366,37 +364,39 @@ const WearableDevices = ({
           >
             <Card className="border-destructive/30">
               <CardContent className="p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <AlertTriangle className="w-4 h-4 text-destructive" />
-                  <h3 className="text-sm font-semibold text-destructive uppercase tracking-wider">
+                <div className="mb-4 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-destructive">
                     Recent Critical Readings
                   </h3>
                 </div>
+
                 <div className="space-y-2">
                   {criticalLog.map((log) => (
                     <div
                       key={log.id}
-                      className="flex flex-wrap items-center gap-4 text-sm bg-destructive/5 rounded-xl px-4 py-3"
+                      className="flex flex-col gap-2 rounded-xl bg-destructive/5 px-4 py-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-4"
                     >
-                      <span className="text-xs text-muted-foreground font-mono w-20">
+                      <span className="w-20 text-xs font-mono text-muted-foreground">
                         {log.time}
                       </span>
-                      <span className="text-destructive font-medium">
+                      <span className="font-medium text-destructive">
                         HR {log.hr} bpm
                       </span>
-                      <span className="text-destructive font-medium">
+                      <span className="font-medium text-destructive">
                         SpO2 {log.spo2}%
                       </span>
-                      <span className="text-destructive font-medium">
+                      <span className="font-medium text-destructive">
                         BP {log.bp}
                       </span>
-                      <span className="text-destructive font-medium">
+                      <span className="font-medium text-destructive">
                         Glucose {log.glucose}
                       </span>
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground mt-3">
+
+                <p className="mt-3 text-xs text-muted-foreground">
                   These readings trigger health alerts visible on the Alerts
                   page.
                 </p>
@@ -406,21 +406,20 @@ const WearableDevices = ({
         )}
       </AnimatePresence>
 
-      {/* ─── Not simulating placeholder ─── */}
       {!isSimulating && (
         <Card>
-          <CardContent className="py-16 text-center">
-            <Radio className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">
+          <CardContent className="px-5 py-14 text-center sm:py-16">
+            <Radio className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" />
+            <h3 className="mb-2 text-lg font-semibold text-foreground">
               No Device Active
             </h3>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
+            <p className="mx-auto mb-6 max-w-md text-sm text-muted-foreground">
               Start the demo simulator to see real-time health metrics streamed
               to your dashboard. The simulator occasionally produces critical
               values to demonstrate the alert system.
             </p>
             <Button onClick={onStartSimulator} className="gap-2">
-              <Play className="w-4 h-4" /> Start Demo Simulator
+              <Play className="h-4 w-4" /> Start Demo Simulator
             </Button>
           </CardContent>
         </Card>

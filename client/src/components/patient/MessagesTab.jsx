@@ -1,11 +1,25 @@
 import React, { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MessageSquareText, Plus } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  ArrowLeft,
+  MessageSquareText,
+  Plus,
+  UserPlus,
+  X,
+} from "lucide-react";
 import ConversationList from "../messages/ConversationList";
 import MessageThread from "../messages/MessageThread";
 import { messagesAPI, authAPI } from "../../api";
 import { useSocket } from "../../context/SocketContext";
 import { Button } from "@/components/ui/button";
+
+const mobilePanelTransition = {
+  type: "spring",
+  stiffness: 320,
+  damping: 30,
+  mass: 0.9,
+};
 
 const MessagesTab = () => {
   const queryClient = useQueryClient();
@@ -22,7 +36,6 @@ const MessagesTab = () => {
     refetchInterval: 30000,
   });
 
-  // Fetch available doctors
   const { data: doctorsData } = useQuery({
     queryKey: ["providers"],
     queryFn: async () => {
@@ -43,7 +56,6 @@ const MessagesTab = () => {
     enabled: !!selectedConversation,
   });
 
-  // Join/leave conversation rooms
   React.useEffect(() => {
     if (!socket || !selectedConversation?.conversationId) return;
     socket.emit("join-conversation", selectedConversation.conversationId);
@@ -52,7 +64,6 @@ const MessagesTab = () => {
     };
   }, [socket, selectedConversation?.conversationId]);
 
-  // Real-time message listener
   React.useEffect(() => {
     if (!socket) return;
     const handleNewMessage = () => {
@@ -64,10 +75,12 @@ const MessagesTab = () => {
       }
       queryClient.invalidateQueries({ queryKey: ["unreadMessages"] });
     };
+
     socket.on("new-message", handleNewMessage);
     socket.on("messages-read", () =>
       queryClient.invalidateQueries({ queryKey: ["conversations"] }),
     );
+
     return () => {
       socket.off("new-message", handleNewMessage);
       socket.off("messages-read");
@@ -114,135 +127,208 @@ const MessagesTab = () => {
     });
   }, [socket, selectedConversation]);
 
+  const handleSelectConversation = useCallback((conversation) => {
+    setSelectedConversation(conversation);
+    setShowDoctorsList(false);
+  }, []);
+
   const handleStartConversation = (doctor) => {
     setSelectedConversation({
       conversationId: null,
       participant: doctor,
     });
     setShowDoctorsList(false);
-    // Fetch existing messages if any
     queryClient.invalidateQueries({
       queryKey: ["messages", doctor._id],
     });
   };
 
-  return (
-    <div className="bg-card border border-border rounded-lg shadow-md h-[calc(100vh-16rem)] flex overflow-hidden theme-surface">
-      {/* Conversations Sidebar */}
-      <div className="w-1/3 border-r border-border flex flex-col">
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 flex-1">
-              <MessageSquareText className="h-4 w-4 text-primary" />
-              {showDoctorsList ? "Doctors" : "Conversations"}
-            </h3>
-            <Button
-              size="sm"
-              variant={showDoctorsList ? "default" : "outline"}
-              onClick={() => setShowDoctorsList(!showDoctorsList)}
-              className="gap-1"
-            >
-              <Plus className="h-4 w-4" />
-              New
-            </Button>
-          </div>
-        </div>
+  const handleBackToList = () => {
+    setSelectedConversation(null);
+  };
 
-        {showDoctorsList ? (
-          <div className="flex-1 overflow-y-auto">
-            {doctorsData && doctorsData.length > 0 ? (
-              doctorsData.map((doctor) => (
-                <div
-                  key={doctor._id}
-                  onClick={() => handleStartConversation(doctor)}
-                  className="p-4 border-b border-border cursor-pointer hover:bg-secondary/30 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold flex-shrink-0">
+  const isShowingThread = !!selectedConversation;
+  const panelTitle = showDoctorsList ? "New Message" : "Conversations";
+
+  return (
+    <div className="theme-surface flex h-[min(78vh,760px)] min-h-[560px] overflow-hidden rounded-[28px] border border-border bg-card shadow-md">
+      <motion.aside
+        className={`${
+          isShowingThread ? "hidden md:flex" : "flex"
+        } min-w-0 flex-1 flex-col border-r border-border md:w-[360px] md:max-w-[380px] md:flex-none`}
+        initial={false}
+        animate={
+          isShowingThread
+            ? { x: -24, opacity: 0.92 }
+            : { x: 0, opacity: 1 }
+        }
+        transition={mobilePanelTransition}
+      >
+        <motion.div
+          layout
+          transition={mobilePanelTransition}
+          className="flex h-full min-h-0 flex-col"
+        >
+          <div className="border-b border-border px-4 py-4 sm:px-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  {showDoctorsList ? (
+                    <UserPlus className="h-4 w-4 text-primary" />
+                  ) : (
+                    <MessageSquareText className="h-4 w-4 text-primary" />
+                  )}
+                  {panelTitle}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {showDoctorsList
+                    ? "Choose a provider to start chatting"
+                    : "Pick a contact to open the thread"}
+                </p>
+              </div>
+
+              <Button
+                size="sm"
+                variant={showDoctorsList ? "default" : "outline"}
+                onClick={() => setShowDoctorsList((prev) => !prev)}
+                className="gap-1 rounded-full"
+              >
+                {showDoctorsList ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                {showDoctorsList ? "Close" : "New"}
+              </Button>
+            </div>
+          </div>
+
+          {showDoctorsList ? (
+            <div className="flex-1 overflow-y-auto">
+              {doctorsData && doctorsData.length > 0 ? (
+                doctorsData.map((doctor) => (
+                  <button
+                    key={doctor._id}
+                    type="button"
+                    onClick={() => handleStartConversation(doctor)}
+                    className="flex w-full items-center gap-3 border-b border-border px-4 py-4 text-left transition-colors hover:bg-secondary/30"
+                  >
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground">
                       {doctor.profile?.firstName?.[0]}
                       {doctor.profile?.lastName?.[0]}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-foreground truncate">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="truncate text-sm font-semibold text-foreground">
                         Dr. {doctor.profile?.firstName} {doctor.profile?.lastName}
                       </h3>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="truncate text-xs text-muted-foreground">
                         {doctor.providerInfo?.specialization ||
                           "Healthcare Provider"}
                       </p>
                     </div>
-                  </div>
+                  </button>
+                ))
+              ) : (
+                <div className="flex h-full items-center justify-center p-4 text-center text-muted-foreground">
+                  No doctors available
                 </div>
-              ))
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground p-4 text-center">
-                No doctors available
-              </div>
-            )}
-          </div>
-        ) : (
-          <ConversationList
-            conversations={conversationsData}
-            selectedConversation={selectedConversation}
-            onSelectConversation={setSelectedConversation}
-          />
-        )}
-      </div>
-
-      {/* Message Thread */}
-      <div className="flex-1 flex flex-col">
-        {selectedConversation ? (
-          <>
-            <div className="p-4 border-b border-border bg-card">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold mr-3">
-                    {selectedConversation.participant?.profile?.firstName?.[0]}
-                    {selectedConversation.participant?.profile?.lastName?.[0]}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">
-                      {selectedConversation.participant?.profile?.firstName}{" "}
-                      {selectedConversation.participant?.profile?.lastName}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedConversation.participant?.role === "provider"
-                        ? selectedConversation.participant?.providerInfo
-                            ?.specialization || "Healthcare Provider"
-                        : "Patient"}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedConversation(null)}
-                >
-                  ×
-                </Button>
-              </div>
+              )}
             </div>
-            <MessageThread
-              messages={messagesData}
-              onSendMessage={handleSendMessage}
-              onTyping={handleTyping}
-              onStopTyping={handleStopTyping}
-              conversationId={selectedConversation?.conversationId}
+          ) : (
+            <ConversationList
+              className="flex-1 overflow-y-auto"
+              conversations={conversationsData}
+              selectedConversation={selectedConversation}
+              onSelectConversation={handleSelectConversation}
             />
-          </>
-        ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            <div className="text-center">
-              <MessageSquareText className="h-16 w-16 mx-auto mb-4 opacity-30" />
-              <p className="text-lg">
-                {showDoctorsList
-                  ? "Select a doctor to start messaging"
-                  : "Select a conversation or create a new one"}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </motion.div>
+      </motion.aside>
+
+      <section
+        className={`${
+          isShowingThread ? "flex" : "hidden md:flex"
+        } min-w-0 flex-1 flex-col`}
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          {selectedConversation ? (
+            <motion.div
+              key={`thread-${selectedConversation.participant?._id || "new"}`}
+              initial={{ opacity: 0, x: 28 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={mobilePanelTransition}
+              className="flex h-full min-h-0 flex-col"
+            >
+              <div className="border-b border-border bg-card px-4 py-4 sm:px-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleBackToList}
+                      className="rounded-full md:hidden"
+                      aria-label="Back to conversations"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground">
+                      {selectedConversation.participant?.profile?.firstName?.[0]}
+                      {selectedConversation.participant?.profile?.lastName?.[0]}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="truncate font-semibold text-foreground">
+                        {selectedConversation.participant?.profile?.firstName}{" "}
+                        {selectedConversation.participant?.profile?.lastName}
+                      </h3>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {selectedConversation.participant?.role === "provider"
+                          ? selectedConversation.participant?.providerInfo
+                              ?.specialization || "Healthcare Provider"
+                          : "Patient"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleBackToList}
+                    className="hidden rounded-full md:inline-flex"
+                    aria-label="Close conversation"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="min-h-0 flex-1">
+                <MessageThread
+                  messages={messagesData}
+                  onSendMessage={handleSendMessage}
+                  onTyping={handleTyping}
+                  onStopTyping={handleStopTyping}
+                  conversationId={selectedConversation?.conversationId}
+                />
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="messages-empty"
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="hidden h-full items-center justify-center px-6 text-muted-foreground md:flex"
+            >
+              <div className="max-w-sm text-center">
+                <MessageSquareText className="mx-auto mb-4 h-16 w-16 opacity-30" />
+                <p className="text-lg">
+                  {showDoctorsList
+                    ? "Choose a doctor to start a new message."
+                    : "Select a conversation to open the thread."}
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </section>
     </div>
   );
 };

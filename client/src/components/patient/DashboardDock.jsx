@@ -18,6 +18,8 @@ import {
   Check,
   BookOpen,
   HelpCircle,
+  Menu,
+  X,
 } from "lucide-react";
 import { Dock, DockItem, DockIcon, DockLabel } from "@/components/ui/dock";
 import { useAuth } from "../../context/AuthContext";
@@ -60,12 +62,16 @@ export default function DashboardDock({
   className,
 }) {
   const navItems = role === "provider" ? PROVIDER_NAV : PATIENT_NAV;
+  const mobilePrimaryItems = navItems.slice(0, 5);
+  const mobileOverflowItems = navItems.slice(5);
   const { user, logout } = useAuth();
   const { theme, mode, themes, setTheme, setMode } = useTheme();
   const navigate = useNavigate();
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const pickerRef = useRef(null);
   const toggleRef = useRef(null);
+  const mobileMenuRef = useRef(null);
 
   const initials =
     `${(user?.profile?.firstName || "U")[0]}${(user?.profile?.lastName || "")[0] || ""}`.toUpperCase();
@@ -87,6 +93,9 @@ export default function DashboardDock({
   // Close picker on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target)) {
+        setShowMobileMenu(false);
+      }
       if (
         pickerRef.current &&
         !pickerRef.current.contains(e.target) &&
@@ -102,9 +111,46 @@ export default function DashboardDock({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showThemePicker]);
 
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === "Escape") {
+        setShowMobileMenu(false);
+        setShowThemePicker(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, []);
+
+  const renderDockItem = (item) => {
+    const Icon = item.icon;
+    const isActive = activeTab === item.id;
+
+    return (
+      <DockItem
+        key={item.id}
+        className={`relative cursor-pointer rounded-full transition-colors ${
+          isActive
+            ? "bg-primary/20 text-primary"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+        onClick={() => handleNavClick(item.id)}
+      >
+        <DockIcon>
+          <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
+        </DockIcon>
+        <DockLabel>{item.label}</DockLabel>
+        {isActive && (
+          <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+        )}
+      </DockItem>
+    );
+  };
+
   return (
     <div
-      className={`hidden md:block fixed bottom-4 left-1/2 -translate-x-1/2 z-50 ${className || ""}`}
+      className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 max-w-[100vw] ${className || ""}`}
     >
       {/* Theme Picker Popup */}
       <AnimatePresence>
@@ -189,6 +235,114 @@ export default function DashboardDock({
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {showMobileMenu && (
+          <>
+            <motion.button
+              type="button"
+              aria-label="Close menu overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm md:hidden"
+              onClick={() => setShowMobileMenu(false)}
+            />
+            <motion.div
+              ref={mobileMenuRef}
+              initial={{ opacity: 0, y: 16, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 340, damping: 28 }}
+              className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-[min(22rem,calc(100vw-1.5rem))] rounded-3xl border border-border/60 bg-background/95 p-4 shadow-2xl backdrop-blur-xl md:hidden"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Menu</p>
+                  <p className="text-xs text-muted-foreground">
+                    Quick access to the rest of the dashboard
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowMobileMenu(false)}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-muted/40 text-muted-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate("/profile");
+                    setShowMobileMenu(false);
+                  }}
+                  className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-border/60 bg-muted/30 px-3 py-3 text-center text-sm text-foreground"
+                >
+                  <User className="h-5 w-5" />
+                  <span>Profile</span>
+                </button>
+
+                {mobileOverflowItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        handleNavClick(item.id);
+                        setShowMobileMenu(false);
+                      }}
+                      className={cn(
+                        "flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-center text-sm transition-colors",
+                        isActive
+                          ? "border-primary/40 bg-primary/15 text-primary"
+                          : "border-border/60 bg-muted/30 text-foreground",
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode(mode === "dark" ? "light" : "dark");
+                    setShowMobileMenu(false);
+                  }}
+                  className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-border/60 bg-muted/30 px-3 py-3 text-center text-sm text-foreground"
+                >
+                  {mode === "dark" ? (
+                    <Sun className="h-5 w-5" />
+                  ) : (
+                    <Moon className="h-5 w-5" />
+                  )}
+                  <span>{mode === "dark" ? "Light" : "Dark"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    navigate("/login");
+                    setShowMobileMenu(false);
+                  }}
+                  className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-border/60 bg-muted/30 px-3 py-3 text-center text-sm text-foreground"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       <Dock
         magnification={60}
         distance={100}
@@ -196,72 +350,83 @@ export default function DashboardDock({
         className="bg-background/80 backdrop-blur-xl border border-border/50 shadow-2xl"
       >
         {/* Profile */}
-        <DockItem
-          className="cursor-pointer rounded-full bg-gradient-to-br from-primary to-primary/60 text-primary-foreground"
-          onClick={() => navigate("/profile")}
-        >
-          <DockIcon>
-            <span className="text-xs font-bold">{initials}</span>
-          </DockIcon>
-          <DockLabel>Profile</DockLabel>
-        </DockItem>
+        <div className="hidden md:contents">
+          <DockItem
+            className="cursor-pointer rounded-full bg-gradient-to-br from-primary to-primary/60 text-primary-foreground"
+            onClick={() => navigate("/profile")}
+          >
+            <DockIcon>
+              <span className="text-xs font-bold">{initials}</span>
+            </DockIcon>
+            <DockLabel>Profile</DockLabel>
+          </DockItem>
 
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <DockItem
-              key={item.id}
-              className={`relative cursor-pointer rounded-full transition-colors ${
-                isActive
-                  ? "bg-primary/20 text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              onClick={() => handleNavClick(item.id)}
-            >
-              <DockIcon>
-                <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
-              </DockIcon>
-              <DockLabel>{item.label}</DockLabel>
-              {isActive && (
-                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
-              )}
-            </DockItem>
-          );
-        })}
+          {navItems.map((item) => renderDockItem(item))}
+        </div>
+
+        <div className="contents md:hidden">
+          <DockItem
+            className="cursor-pointer rounded-full bg-gradient-to-br from-primary to-primary/60 text-primary-foreground"
+            onClick={() => setShowMobileMenu((prev) => !prev)}
+          >
+            <DockIcon>
+              <span className="text-xs font-bold">AI</span>
+            </DockIcon>
+            <DockLabel>Assistant</DockLabel>
+          </DockItem>
+
+          {mobilePrimaryItems.map((item) => renderDockItem(item))}
+
+          <DockItem
+            className={cn(
+              "cursor-pointer rounded-full transition-colors",
+              showMobileMenu
+                ? "bg-primary/20 text-primary"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            onClick={() => setShowMobileMenu((prev) => !prev)}
+          >
+            <DockIcon>
+              <Menu className="w-5 h-5" strokeWidth={2} />
+            </DockIcon>
+            <DockLabel>More</DockLabel>
+          </DockItem>
+        </div>
 
         {/* Theme toggle */}
-        <DockItem
-          className={cn(
-            "cursor-pointer rounded-full transition-colors",
-            showThemePicker
-              ? "bg-primary/20 text-primary"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-          onClick={(e) => {
-            toggleRef.current = e.currentTarget;
-            setShowThemePicker((v) => !v);
-          }}
-        >
-          <DockIcon>
-            <Palette className="w-5 h-5" strokeWidth={2} />
-          </DockIcon>
-          <DockLabel>Theme</DockLabel>
-        </DockItem>
+        <div className="hidden md:contents">
+          <DockItem
+            className={cn(
+              "cursor-pointer rounded-full transition-colors",
+              showThemePicker
+                ? "bg-primary/20 text-primary"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            onClick={(e) => {
+              toggleRef.current = e.currentTarget;
+              setShowThemePicker((v) => !v);
+            }}
+          >
+            <DockIcon>
+              <Palette className="w-5 h-5" strokeWidth={2} />
+            </DockIcon>
+            <DockLabel>Theme</DockLabel>
+          </DockItem>
 
-        {/* Logout */}
-        <DockItem
-          className="cursor-pointer rounded-full text-muted-foreground hover:text-red-500"
-          onClick={() => {
-            logout();
-            navigate("/login");
-          }}
-        >
-          <DockIcon>
-            <LogOut className="w-5 h-5" strokeWidth={2} />
-          </DockIcon>
-          <DockLabel>Sign Out</DockLabel>
-        </DockItem>
+          {/* Logout */}
+          <DockItem
+            className="cursor-pointer rounded-full text-muted-foreground hover:text-red-500"
+            onClick={() => {
+              logout();
+              navigate("/login");
+            }}
+          >
+            <DockIcon>
+              <LogOut className="w-5 h-5" strokeWidth={2} />
+            </DockIcon>
+            <DockLabel>Sign Out</DockLabel>
+          </DockItem>
+        </div>
       </Dock>
     </div>
   );
