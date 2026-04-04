@@ -24,7 +24,7 @@ const FEEDBACK_CATEGORIES = [
 ];
 
 export default function Help() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -44,7 +44,9 @@ export default function Help() {
       : faqItems.filter((f) => f.category === faqCategory);
 
   const handleSidebarNav = (tabId) => {
-    navigate("/dashboard", { state: { tab: tabId } });
+    const dashboardPath =
+      user?.role === "provider" ? "/provider/dashboard" : "/dashboard";
+    navigate(dashboardPath, { state: { tab: tabId } });
   };
 
   const submitMutation = useMutation({
@@ -57,6 +59,10 @@ export default function Help() {
       setMessage("");
     },
     onError: (err) => {
+      if (err?.response?.status === 401) {
+        logout();
+        return;
+      }
       toast.error(
         err?.response?.data?.message || "Failed to submit feedback. Please try again.",
       );

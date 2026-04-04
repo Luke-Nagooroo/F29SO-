@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { authAPI } from "../api";
+import { setAuthFailureCallback } from "../api/axios";
 
 const AuthContext = createContext(null);
 
@@ -22,13 +23,15 @@ export const AuthProvider = ({ children }) => {
 
       if (savedUser) {
         try {
-          setUser(JSON.parse(savedUser));
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
           const response = await authAPI.getCurrentUser();
           setUser(response.data.data);
           localStorage.setItem("user", JSON.stringify(response.data.data));
         } catch (error) {
           console.error("Auth initialization error:", error);
-          logout();
+          // Keep the cached user - don't logout on verification failure
+          // The axios interceptor will handle 401 errors properly
         }
       } else {
         try {
@@ -41,6 +44,11 @@ export const AuthProvider = ({ children }) => {
       }
       setLoading(false);
     };
+
+    // Register callback for when the axios interceptor detects auth failure
+    setAuthFailureCallback(() => {
+      setUser(null);
+    });
 
     initAuth();
   }, []);

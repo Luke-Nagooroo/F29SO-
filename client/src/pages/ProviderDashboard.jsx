@@ -18,6 +18,7 @@ import {
   SunMedium,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { useTheme } from "../context/ThemeContext";
 import OverviewTab from "../components/provider/OverviewTab";
 import CalendarTab from "../components/provider/CalendarTab";
@@ -122,6 +123,8 @@ const ProviderDashboard = () => {
       const response = await appointmentsAPI.getProviderPatients();
       return response.data.data;
     },
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   const { data: todayAppointments } = useQuery({
@@ -137,6 +140,8 @@ const ProviderDashboard = () => {
       });
       return response.data.data;
     },
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   const { data: unreadMessagesData } = useQuery({
@@ -145,10 +150,12 @@ const ProviderDashboard = () => {
       const response = await messagesAPI.getUnreadCount();
       return response.data.data?.count || 0;
     },
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   const { data: patientAlerts } = useQuery({
-    queryKey: ["patientAlerts", patients?.map((p) => p._id)],
+    queryKey: ["patientAlerts", patients?.map((p) => p._id).join(",") || ""],
     queryFn: async () => {
       if (!patients || patients.length === 0) return [];
       const ids = patients.map((p) => p._id).join(",");
@@ -159,6 +166,14 @@ const ProviderDashboard = () => {
       return response.data.data;
     },
     enabled: !!patients && patients.length > 0,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    onError: (error) => {
+      // If we get a 401, explicitly logout
+      if (error?.response?.status === 401) {
+        logout();
+      }
+    },
   });
 
   const activeAlertsCount = (patientAlerts || []).filter(

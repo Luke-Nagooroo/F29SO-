@@ -100,7 +100,9 @@ const Alerts = () => {
   };
 
   const handleSidebarNav = (tabId) => {
-    navigate("/dashboard", { state: { tab: tabId } });
+    const dashboardPath =
+      user?.role === "provider" ? "/provider/dashboard" : "/dashboard";
+    navigate(dashboardPath, { state: { tab: tabId } });
   };
 
   const cycleTheme = () => {

@@ -1,5 +1,7 @@
 import axios from "axios";
 
+let onAuthFailure = null;
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
   withCredentials: true,
@@ -7,6 +9,11 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+// Allow AuthContext to register a callback when auth fails
+export const setAuthFailureCallback = (callback) => {
+  onAuthFailure = callback;
+};
 
 api.interceptors.response.use(
   (response) => response,
@@ -44,6 +51,11 @@ api.interceptors.response.use(
       } catch (refreshError) {
         localStorage.removeItem("user");
         sessionStorage.removeItem("medxi_splash_shown");
+
+        // Notify the auth context that auth has failed
+        if (onAuthFailure) {
+          onAuthFailure();
+        }
 
         // Avoid full-page reload loops when the app is already on a public auth route
         // or during the initial "who am I?" check for anonymous users.
