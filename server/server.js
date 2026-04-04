@@ -145,12 +145,20 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // Rate limiter
+const isDevelopment = process.env.NODE_ENV !== "production";
+
 const generalLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100,
+  max: isDevelopment ? 1000 : 300,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: "Too many requests, please try again later" },
+  skip: (req) =>
+    isDevelopment &&
+    (req.path === "/auth/me" || req.path === "/auth/refresh"),
+  message: {
+    success: false,
+    message: "Too many requests, please try again later",
+  },
 });
 
 app.use("/api", generalLimiter);
