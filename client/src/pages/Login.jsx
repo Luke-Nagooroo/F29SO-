@@ -147,6 +147,12 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-950 via-stone-900 to-rose-950/40 relative">
       <BackgroundPaths className="opacity-20 text-rose-400" />
+      <Link
+        to="/"
+        className="fixed top-5 left-5 z-50 lg:hidden text-2xl font-black tracking-tighter text-white/80 hover:text-white transition-colors duration-200"
+      >
+        <span className="text-rose-500">MED</span>XI
+      </Link>
       <motion.div
         initial={{ opacity: 1 }}
         animate={
@@ -177,7 +183,7 @@ const Login = () => {
             <p className="inline-block rounded-full border border-white/30 px-4 py-1 text-xs tracking-wide uppercase">
               Virtual Care Platform
             </p>
-            <h1 className="mt-8 text-6xl font-black tracking-tight">MEDXI</h1>
+            <Link to="/" className="mt-8 block text-6xl font-black tracking-tight hover:opacity-80 transition-opacity">MEDXI</Link>
             <p className="mt-6 max-w-md text-lg text-rose-100">
               Smarter care for patients and providers. Monitor health insights,
               appointments, and communication in one place.

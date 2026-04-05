@@ -22,6 +22,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Progress = lazy(() => import("./pages/Progress"));
 const Resources = lazy(() => import("./pages/Resources"));
 const Help = lazy(() => import("./pages/Help"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -249,7 +250,14 @@ function App() {
         />
 
         {/* Default Routes */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route
+          path="/"
+          element={
+            <PublicRoute>
+              <LandingPage />
+            </PublicRoute>
+          }
+        />
         <Route
           path="/unauthorized"
           element={
