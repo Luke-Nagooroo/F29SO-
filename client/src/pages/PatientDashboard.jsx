@@ -4,6 +4,8 @@ import React, {
   useRef,
   useCallback,
   useMemo,
+  lazy,
+  Suspense,
 } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
@@ -14,7 +16,6 @@ import {
   useTransform,
 } from "framer-motion";
 import {
-  Activity,
   AlertTriangle,
   Plus,
 } from "lucide-react";
@@ -23,43 +24,31 @@ import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useSocket } from "../context/SocketContext";
 import DraggableGrid from "../components/patient/DraggableGrid";
-import AddMetricModal from "../components/health/AddMetricModal";
 import RecipesWidget from "../components/dashboard/RecipesWidget";
-import WearableDevices from "../components/wearables/WearableDevices";
-import GoogleFitConnect from "../components/GoogleFitConnect";
 import FitMetricTile from "../components/patient/FitMetricTile";
 import ActivityOverview from "../components/patient/ActivityOverview";
 import PatientInsights from "../components/patient/PatientInsights";
 import PatientHero from "../components/patient/PatientHero";
 import DashboardDock from "../components/patient/DashboardDock";
-import WellnessScoreRing from "../components/gamification/WellnessScoreRing";
 import StreakCounter from "../components/gamification/StreakCounter";
 import LevelBadge from "../components/gamification/LevelBadge";
 import DailyChallenges from "../components/gamification/DailyChallenges";
-import MetricDetailModal from "../components/patient/MetricDetailModal";
-import MedicationDashboard from "../components/medication/MedicationDashboard";
-import MessagesTab from "../components/patient/MessagesTab";
-import AppointmentsCalendar from "../components/appointments/AppointmentsCalendar";
-import {
-  ExpandableChat,
-  ExpandableChatHeader,
-  ExpandableChatBody,
-  ExpandableChatFooter,
-} from "@/components/ui/expandable-chat";
-import {
-  ChatBubble,
-  ChatBubbleAvatar,
-  ChatBubbleMessage,
-} from "@/components/ui/chat-bubble";
-import { ChatInput } from "@/components/ui/chat-input";
-import { ChatMessageList } from "@/components/ui/chat-message-list";
-import { CornerDownLeft, Sparkles } from "lucide-react";
 
-import { healthMetricsAPI, alertsAPI, chatbotAPI, gamificationAPI } from "../api";
+import { healthMetricsAPI, alertsAPI, gamificationAPI } from "../api";
 import { useToast } from "../context/ToastContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+
+// Lazy-loaded heavy components
+const AddMetricModal = lazy(() => import("../components/health/AddMetricModal"));
+const MetricDetailModal = lazy(() => import("../components/patient/MetricDetailModal"));
+const ExpandableChatWidget = lazy(() => import("../components/patient/ExpandableChatWidget"));
+const WearableDevices = lazy(() => import("../components/wearables/WearableDevices"));
+const GoogleFitConnect = lazy(() => import("../components/GoogleFitConnect"));
+const MedicationDashboard = lazy(() => import("../components/medication/MedicationDashboard"));
+const MessagesTab = lazy(() => import("../components/patient/MessagesTab"));
+const AppointmentsCalendar = lazy(() => import("../components/appointments/AppointmentsCalendar"));
 
 /* ──── Alerts Banner ──── */
 const AlertsSection = ({ alertsData, onViewAllAlerts, theme }) => {
@@ -213,171 +202,6 @@ const CriticalAlertBanner = ({ criticalAlerts, onNavigateAlerts }) => {
 
 
 /* ════════════════════════════════════════════════════
-   ██  EXPANDABLE AI CHAT WIDGET  ██
-   ════════════════════════════════════════════════════ */
-const SAMPLE_QUESTIONS = [
-  "What should my blood pressure be?",
-  "Tips for better sleep",
-  "How to manage diabetes",
-  "Healthy meal ideas",
-  "What does my heart rate mean?",
-  "How much water should I drink?",
-];
-
-const ExpandableChatWidget = () => {
-  const { user } = useAuth();
-  const messageIdRef = useRef(2);
-  const userInitials = user?.profile
-    ? `${user.profile.firstName?.[0] ?? ""}${user.profile.lastName?.[0] ?? ""}`.toUpperCase() ||
-      "ME"
-    : "ME";
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      content:
-        "Hello! I'm your MEDXI AI health assistant. How can I help you today?",
-      sender: "ai",
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSend = async (text) => {
-    if (!text.trim() || isLoading) return;
-    const userMsgId = messageIdRef.current++;
-    setMessages((prev) => [
-      ...prev,
-      { id: userMsgId, content: text, sender: "user" },
-    ]);
-    setInput("");
-    setIsLoading(true);
-
-    try {
-      const response = await chatbotAPI.sendMessage(text);
-      const reply =
-        response.data?.data?.reply ||
-        response.data?.data?.response ||
-        response.data?.reply ||
-        "I'm not sure how to respond to that.";
-      const aiMsgId = messageIdRef.current++;
-      setMessages((prev) => [
-        ...prev,
-        { id: aiMsgId, content: reply, sender: "ai" },
-      ]);
-    } catch (err) {
-      const errMsgId = messageIdRef.current++;
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: errMsgId,
-          content:
-            "Sorry, I'm having trouble connecting right now. Please try again.",
-          sender: "ai",
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    handleSend(input);
-  };
-
-  const showSamples = messages.length <= 1 && !isLoading;
-
-  return (
-    <ExpandableChat size="lg" position="bottom-right">
-      <ExpandableChatHeader className="flex-col text-center justify-center bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-t-2xl">
-        <h1 className="text-xl font-semibold">MEDXI AI Assistant</h1>
-        <p className="text-sm opacity-80">Ask me anything about your health</p>
-      </ExpandableChatHeader>
-
-      <ExpandableChatBody>
-        <ChatMessageList>
-          {messages.map((message) => (
-            <ChatBubble
-              key={message.id}
-              variant={message.sender === "user" ? "sent" : "received"}
-            >
-              <ChatBubbleAvatar
-                className="h-8 w-8 shrink-0"
-                fallback={message.sender === "user" ? userInitials : "XI"}
-                variant={message.sender === "user" ? undefined : "ai"}
-              />
-              <ChatBubbleMessage
-                variant={message.sender === "user" ? "sent" : "received"}
-              >
-                {message.content}
-              </ChatBubbleMessage>
-            </ChatBubble>
-          ))}
-
-          {isLoading && (
-            <ChatBubble variant="received">
-              <ChatBubbleAvatar
-                className="h-8 w-8 shrink-0"
-                fallback="XI"
-                variant="ai"
-              />
-              <ChatBubbleMessage isLoading />
-            </ChatBubble>
-          )}
-
-          {/* Predefined sample questions — inside message list so no extra scroll */}
-          {showSamples && (
-            <div className="px-1 pt-2">
-              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
-                <Sparkles className="w-3 h-3" />
-                Try asking
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {SAMPLE_QUESTIONS.map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => handleSend(q)}
-                    className="text-xs px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </ChatMessageList>
-      </ExpandableChatBody>
-
-      <ExpandableChatFooter>
-        <form
-          onSubmit={handleSubmit}
-          className="relative rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring p-1"
-        >
-          <ChatInput
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about your health..."
-            className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0"
-          />
-          <div className="flex items-center p-3 pt-0 justify-end">
-            <Button
-              type="submit"
-              size="sm"
-              className="gap-1.5"
-              disabled={isLoading}
-              aria-busy={isLoading}
-            >
-              Send
-              <CornerDownLeft className="size-3.5" />
-            </Button>
-          </div>
-        </form>
-      </ExpandableChatFooter>
-    </ExpandableChat>
-  );
-};
-
-/* ════════════════════════════════════════════════════
    ██  PATIENT DASHBOARD  ██
    ════════════════════════════════════════════════════ */
 const PatientDashboard = () => {
@@ -480,13 +304,16 @@ const PatientDashboard = () => {
   const dashboardOpacity = useTransform(scrollYProgress, [0.5, 1], [0, 1]);
 
   // ── Data queries ──
+  const isMetricsTab = activeTab === "overview" || activeTab === "activity";
+
   const { data: dailyTotals } = useQuery({
     queryKey: ["dailyTotals"],
     queryFn: async () => {
       const response = await healthMetricsAPI.getDailyTotals();
       return response.data.data;
     },
-    refetchInterval: 60000,
+    refetchInterval: isMetricsTab ? 60000 : false,
+    refetchIntervalInBackground: false,
   });
 
   // Fallback to latest-ever values so tiles never show "--" when historical data exists
@@ -605,8 +432,8 @@ const PatientDashboard = () => {
       });
       return response.data.data;
     },
-    refetchInterval: 10000,
-    staleTime: 0,
+    staleTime: 30000,
+    refetchOnWindowFocus: true,
   });
 
   // Real-time: refetch alerts when a critical alert socket event arrives
@@ -1158,49 +985,45 @@ const PatientDashboard = () => {
             </div>
           )}
 
-          {/* ── Appointments Tab (full calendar inline) ── */}
-          {activeTab === "appointments" && <AppointmentsCalendar />}
-
-          {/* ── Messages Tab ── */}
-          {activeTab === "messages" && <MessagesTab />}
-
-          {/* ── Medications Tab ── */}
-          {activeTab === "medications" && <MedicationDashboard />}
-
-          {/* ── Wearables Tab ── */}
-          {activeTab === "wearables" && (
-            <div className="space-y-6">
-              <GoogleFitConnect />
-              <WearableDevices
-                isSimulating={isSimulating}
-                simulatorData={simulatorData}
-                onStartSimulator={startSimulator}
-                onStopSimulator={stopSimulator}
-              />
-            </div>
-          )}
+          {/* ── Lazy-loaded tabs ── */}
+          <Suspense fallback={<div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
+            {activeTab === "appointments" && <AppointmentsCalendar />}
+            {activeTab === "messages" && <MessagesTab />}
+            {activeTab === "medications" && <MedicationDashboard />}
+            {activeTab === "wearables" && (
+              <div className="space-y-6">
+                <GoogleFitConnect />
+                <WearableDevices
+                  isSimulating={isSimulating}
+                  simulatorData={simulatorData}
+                  onStartSimulator={startSimulator}
+                  onStopSimulator={stopSimulator}
+                />
+              </div>
+            )}
+          </Suspense>
         </main>
       </motion.div>
 
-      {/* ── Metric Detail Modal ── */}
-      <MetricDetailModal
-        metricType={selectedMetric}
-        value={latestMetrics?.[selectedMetric]?.value}
-        metricHistory={metricHistory}
-        isOpen={!!selectedMetric}
-        onClose={() => setSelectedMetric(null)}
-        onMetricAdded={refetchMetrics}
-      />
+      {/* ── Lazy-loaded modals & chat ── */}
+      <Suspense fallback={null}>
+        <MetricDetailModal
+          metricType={selectedMetric}
+          value={latestMetrics?.[selectedMetric]?.value}
+          metricHistory={metricHistory}
+          isOpen={!!selectedMetric}
+          onClose={() => setSelectedMetric(null)}
+          onMetricAdded={refetchMetrics}
+        />
 
-      {/* ── Expandable AI Chat (appears after scroll) ── */}
-      {pastHero && <ExpandableChatWidget />}
+        {pastHero && <ExpandableChatWidget />}
 
-      {/* ── Modals ── */}
-      <AddMetricModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSuccess={refetchMetrics}
-      />
+        <AddMetricModal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onSuccess={refetchMetrics}
+        />
+      </Suspense>
     </div>
   );
 };

@@ -567,6 +567,7 @@ const SystemMetricsTab = ({ systemMetrics, stats }) => {
     queryKey: ["admin-system-metrics-detail"],
     queryFn: () => adminAPI.getSystemMetrics().then((r) => r.data.data),
     refetchInterval: 60000,
+    refetchIntervalInBackground: false,
   });
 
   const metrics = recentMetrics || systemMetrics;
@@ -666,12 +667,14 @@ const AdminDashboard = () => {
     queryKey: ["admin-stats"],
     queryFn: () => adminAPI.getStats().then((r) => r.data.data),
     refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: systemMetrics } = useQuery({
     queryKey: ["admin-system-metrics"],
     queryFn: () => adminAPI.getSystemMetrics().then((r) => r.data.data),
     refetchInterval: 60000,
+    refetchIntervalInBackground: false,
   });
 
   const handleLogout = async () => {

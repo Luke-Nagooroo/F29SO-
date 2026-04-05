@@ -20,6 +20,7 @@ const MessagesTab = () => {
       return response.data.data;
     },
     refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
 
   // Fetch provider's patients

@@ -22,8 +22,9 @@ export default function Progress() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ["gamification-stats"],
     queryFn: () => gamificationAPI.getStats().then((r) => r.data.data),
-    staleTime: 10000,
-    refetchInterval: 15000,
+    staleTime: 30000,
+    refetchInterval: 60000,
+    refetchIntervalInBackground: false,
   });
 
   const handleSidebarNav = (tabId) => {

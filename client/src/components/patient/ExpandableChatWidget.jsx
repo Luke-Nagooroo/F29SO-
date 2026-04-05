@@ -1,0 +1,181 @@
+import React, { useState, useRef } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { chatbotAPI } from "../../api";
+import { Button } from "@/components/ui/button";
+import {
+  ExpandableChat,
+  ExpandableChatHeader,
+  ExpandableChatBody,
+  ExpandableChatFooter,
+} from "@/components/ui/expandable-chat";
+import {
+  ChatBubble,
+  ChatBubbleAvatar,
+  ChatBubbleMessage,
+} from "@/components/ui/chat-bubble";
+import { ChatInput } from "@/components/ui/chat-input";
+import { ChatMessageList } from "@/components/ui/chat-message-list";
+import { CornerDownLeft, Sparkles } from "lucide-react";
+
+const SAMPLE_QUESTIONS = [
+  "What should my blood pressure be?",
+  "Tips for better sleep",
+  "How to manage diabetes",
+  "Healthy meal ideas",
+  "What does my heart rate mean?",
+  "How much water should I drink?",
+];
+
+const ExpandableChatWidget = () => {
+  const { user } = useAuth();
+  const messageIdRef = useRef(2);
+  const userInitials = user?.profile
+    ? `${user.profile.firstName?.[0] ?? ""}${user.profile.lastName?.[0] ?? ""}`.toUpperCase() ||
+      "ME"
+    : "ME";
+  const [messages, setMessages] = useState([
+    {
+      id: 1,
+      content:
+        "Hello! I'm your MEDXI AI health assistant. How can I help you today?",
+      sender: "ai",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSend = async (text) => {
+    if (!text.trim() || isLoading) return;
+    const userMsgId = messageIdRef.current++;
+    setMessages((prev) => [
+      ...prev,
+      { id: userMsgId, content: text, sender: "user" },
+    ]);
+    setInput("");
+    setIsLoading(true);
+
+    try {
+      const response = await chatbotAPI.sendMessage(text);
+      const reply =
+        response.data?.data?.reply ||
+        response.data?.data?.response ||
+        response.data?.reply ||
+        "I'm not sure how to respond to that.";
+      const aiMsgId = messageIdRef.current++;
+      setMessages((prev) => [
+        ...prev,
+        { id: aiMsgId, content: reply, sender: "ai" },
+      ]);
+    } catch (err) {
+      const errMsgId = messageIdRef.current++;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: errMsgId,
+          content:
+            "Sorry, I'm having trouble connecting right now. Please try again.",
+          sender: "ai",
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    handleSend(input);
+  };
+
+  const showSamples = messages.length <= 1 && !isLoading;
+
+  return (
+    <ExpandableChat size="lg" position="bottom-right">
+      <ExpandableChatHeader className="flex-col text-center justify-center bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-t-2xl">
+        <h1 className="text-xl font-semibold">MEDXI AI Assistant</h1>
+        <p className="text-sm opacity-80">Ask me anything about your health</p>
+      </ExpandableChatHeader>
+
+      <ExpandableChatBody>
+        <ChatMessageList>
+          {messages.map((message) => (
+            <ChatBubble
+              key={message.id}
+              variant={message.sender === "user" ? "sent" : "received"}
+            >
+              <ChatBubbleAvatar
+                className="h-8 w-8 shrink-0"
+                fallback={message.sender === "user" ? userInitials : "XI"}
+                variant={message.sender === "user" ? undefined : "ai"}
+              />
+              <ChatBubbleMessage
+                variant={message.sender === "user" ? "sent" : "received"}
+              >
+                {message.content}
+              </ChatBubbleMessage>
+            </ChatBubble>
+          ))}
+
+          {isLoading && (
+            <ChatBubble variant="received">
+              <ChatBubbleAvatar
+                className="h-8 w-8 shrink-0"
+                fallback="XI"
+                variant="ai"
+              />
+              <ChatBubbleMessage isLoading />
+            </ChatBubble>
+          )}
+
+          {showSamples && (
+            <div className="px-1 pt-2">
+              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+                <Sparkles className="w-3 h-3" />
+                Try asking
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {SAMPLE_QUESTIONS.map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => handleSend(q)}
+                    className="text-xs px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </ChatMessageList>
+      </ExpandableChatBody>
+
+      <ExpandableChatFooter>
+        <form
+          onSubmit={handleSubmit}
+          className="relative rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring p-1"
+        >
+          <ChatInput
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask about your health..."
+            className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0"
+          />
+          <div className="flex items-center p-3 pt-0 justify-end">
+            <Button
+              type="submit"
+              size="sm"
+              className="gap-1.5"
+              disabled={isLoading}
+              aria-busy={isLoading}
+            >
+              Send
+              <CornerDownLeft className="size-3.5" />
+            </Button>
+          </div>
+        </form>
+      </ExpandableChatFooter>
+    </ExpandableChat>
+  );
+};
+
+export default ExpandableChatWidget;

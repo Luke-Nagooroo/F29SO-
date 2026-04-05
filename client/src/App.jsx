@@ -1,25 +1,27 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router";
 import { useAuth } from "./context/AuthContext";
 import { BackgroundPaths } from "./components/ui/background-paths";
 
-// Pages
+// Auth pages — small, keep eagerly loaded for fast first paint
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
-import PatientDashboard from "./pages/PatientDashboard";
-import ProviderDashboard from "./pages/ProviderDashboard";
-import AdminDashboard from "./pages/AdminDashboard";
-import Appointments from "./pages/Appointments";
-import Messages from "./pages/Messages";
-import Profile from "./pages/Profile";
-import Alerts from "./pages/Alerts";
-import NotFound from "./pages/NotFound";
-import Progress from "./pages/Progress";
-import Resources from "./pages/Resources";
-import Help from "./pages/Help";
+
+// Lazy-loaded pages
+const PatientDashboard = lazy(() => import("./pages/PatientDashboard"));
+const ProviderDashboard = lazy(() => import("./pages/ProviderDashboard"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const Appointments = lazy(() => import("./pages/Appointments"));
+const Messages = lazy(() => import("./pages/Messages"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Alerts = lazy(() => import("./pages/Alerts"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Progress = lazy(() => import("./pages/Progress"));
+const Resources = lazy(() => import("./pages/Resources"));
+const Help = lazy(() => import("./pages/Help"));
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -108,6 +110,13 @@ function App() {
       )}
 
       <div className={showPersistentBackground ? "relative z-[1]" : ""}>
+        <Suspense
+          fallback={
+            <div className="min-h-screen flex items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+            </div>
+          }
+        >
         <Routes>
         {/* Public Routes */}
         <Route
@@ -253,6 +262,7 @@ function App() {
         />
         <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
       </div>
     </div>
   );

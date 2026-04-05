@@ -65,7 +65,8 @@ export default function ActivityOverview({ className, serverDailyTotals }) {
       return res.data.data || [];
     },
     staleTime: 0, // always consider stale so metric adds reflect immediately
-    refetchInterval: 30 * 1000, // auto-refetch every 30 seconds
+    refetchInterval: 60 * 1000,
+    refetchIntervalInBackground: false,
   });
 
   const timeframeLabel = useMemo(() => {

@@ -73,6 +73,7 @@ const Messages = () => {
       return response.data.data;
     },
     refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: messagesData } = useQuery({
