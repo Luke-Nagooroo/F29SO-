@@ -1,6 +1,7 @@
 import React from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router";
 import { useAuth } from "./context/AuthContext";
+import { BackgroundPaths } from "./components/ui/background-paths";
 
 // Pages
 import Login from "./pages/Login";
@@ -75,9 +76,39 @@ const PublicRoute = ({ children }) => {
 };
 
 function App() {
+  const location = useLocation();
+  const showPersistentBackground = [
+    "/dashboard",
+    "/alerts",
+    "/progress",
+    "/resources",
+    "/help",
+    "/profile",
+  ].includes(location.pathname);
+  const persistentBackgroundOpacity =
+    location.pathname === "/dashboard"
+      ? "var(--patient-dashboard-content-bg-opacity, 0)"
+      : 1;
+
   return (
-    <div className="min-h-screen bg-background">
-      <Routes>
+    <div className="relative min-h-screen bg-background overflow-x-hidden">
+      {showPersistentBackground && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-0 overflow-hidden transition-opacity duration-500"
+          style={{ opacity: persistentBackgroundOpacity }}
+        >
+          <BackgroundPaths className="opacity-30" />
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute top-1/4 left-1/4 w-[28rem] h-[28rem] rounded-full blur-3xl opacity-60 bg-[var(--bg-effect-1)]" />
+            <div className="absolute bottom-1/3 right-1/4 w-[22rem] h-[22rem] rounded-full blur-3xl opacity-50 bg-[var(--bg-effect-2)]" />
+            <div className="absolute top-2/3 left-1/2 w-[18rem] h-[18rem] rounded-full blur-3xl opacity-40 bg-[var(--bg-effect-3)]" />
+          </div>
+        </div>
+      )}
+
+      <div className={showPersistentBackground ? "relative z-[1]" : ""}>
+        <Routes>
         {/* Public Routes */}
         <Route
           path="/login"
@@ -221,7 +252,8 @@ function App() {
           }
         />
         <Route path="*" element={<NotFound />} />
-      </Routes>
+        </Routes>
+      </div>
     </div>
   );
 }

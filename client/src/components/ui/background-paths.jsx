@@ -3,9 +3,8 @@ import { motion } from "framer-motion";
 
 // Stable random durations computed once at module load — never changes on re-render
 const DURATIONS = Array.from({ length: 36 }, () => 20 + Math.random() * 10);
-
-function FloatingPaths({ position }) {
-  const paths = Array.from({ length: 36 }, (_, i) => ({
+const createPaths = (position) =>
+  Array.from({ length: 36 }, (_, i) => ({
     id: i,
     d: `M-${380 - i * 5 * position} -${189 + i * 6}C-${
       380 - i * 5 * position
@@ -16,6 +15,11 @@ function FloatingPaths({ position }) {
     } ${875 - i * 6} ${684 - i * 5 * position} ${875 - i * 6}`,
     width: 0.5 + i * 0.03,
   }));
+const FORWARD_PATHS = createPaths(1);
+const REVERSE_PATHS = createPaths(-1);
+
+function FloatingPaths({ position }) {
+  const paths = position === 1 ? FORWARD_PATHS : REVERSE_PATHS;
 
   return (
     <div className="absolute inset-0 pointer-events-none">

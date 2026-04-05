@@ -441,6 +441,19 @@ const PatientDashboard = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--patient-dashboard-content-bg-opacity",
+      pastHero ? "1" : "0",
+    );
+
+    return () => {
+      document.documentElement.style.removeProperty(
+        "--patient-dashboard-content-bg-opacity",
+      );
+    };
+  }, [pastHero]);
+
   // ── If arriving with a tab in state (from nav links on other pages), skip hero ──
   useEffect(() => {
     if (!location.state?.tab) return;
@@ -827,7 +840,7 @@ const PatientDashboard = () => {
   }, [dashboardToggleMetric, isSelectedToggleMetricHidden]);
 
   return (
-    <div className="min-h-screen bg-transparent text-foreground">
+    <div className="relative min-h-screen bg-transparent text-foreground">
       {/* ── Bottom Dock Navigation (appears after scroll) ── */}
       <AnimatePresence>
         {pastHero && (
@@ -960,6 +973,7 @@ const PatientDashboard = () => {
       >
         <PatientHero userName={firstName} heroRef={heroRef} />
       </div>
+
 
       {/* ── Main Dashboard Content ── */}
       <motion.div
