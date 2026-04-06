@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MessageSquareText, Plus } from "lucide-react";
+import { MessageSquare, Plus } from "lucide-react";
 import ConversationList from "../messages/ConversationList";
 import MessageThread from "../messages/MessageThread";
 import { messagesAPI, appointmentsAPI } from "../../api";
 import { useSocket } from "../../context/SocketContext";
-import { Button } from "@/components/ui/button";
 
 const MessagesTab = () => {
   const queryClient = useQueryClient();
@@ -23,7 +22,6 @@ const MessagesTab = () => {
     refetchIntervalInBackground: false,
   });
 
-  // Fetch provider's patients
   const { data: patientsData } = useQuery({
     queryKey: ["providerPatients"],
     queryFn: async () => {
@@ -44,7 +42,6 @@ const MessagesTab = () => {
     enabled: !!selectedConversation,
   });
 
-  // Join/leave conversation rooms
   useEffect(() => {
     if (!socket || !selectedConversation?.conversationId) return;
     socket.emit("join-conversation", selectedConversation.conversationId);
@@ -53,7 +50,6 @@ const MessagesTab = () => {
     };
   }, [socket, selectedConversation?.conversationId]);
 
-  // Real-time message listener
   useEffect(() => {
     if (!socket) return;
     const handleNewMessage = () => {
@@ -92,9 +88,7 @@ const MessagesTab = () => {
 
   const handleSendMessage = useCallback(
     (content) => {
-      if (selectedConversation) {
-        sendMessageMutation.mutate(content);
-      }
+      if (selectedConversation) sendMessageMutation.mutate(content);
     },
     [selectedConversation, sendMessageMutation],
   );
@@ -121,127 +115,138 @@ const MessagesTab = () => {
       participant: patient,
     });
     setShowPatientsList(false);
-    // Fetch existing messages if any
-    queryClient.invalidateQueries({
-      queryKey: ["messages", patient._id],
-    });
+    queryClient.invalidateQueries({ queryKey: ["messages", patient._id] });
   };
 
-  return (
-    <div className="bg-card border border-border rounded-lg shadow-md h-[calc(100vh-16rem)] flex overflow-hidden theme-surface">
-      {/* Conversations Sidebar */}
-      <div className="w-1/3 border-r border-border flex flex-col">
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 flex-1">
-              <MessageSquareText className="h-4 w-4 text-primary" />
-              {showPatientsList ? "Patients" : "Conversations"}
-            </h3>
-            <Button
-              size="sm"
-              variant={showPatientsList ? "default" : "outline"}
-              onClick={() => setShowPatientsList(!showPatientsList)}
-              className="gap-1"
-            >
-              <Plus className="h-4 w-4" />
-              New
-            </Button>
-          </div>
-        </div>
+  const participant = selectedConversation?.participant;
+  const participantName = participant
+    ? `${participant.profile?.firstName ?? ""} ${participant.profile?.lastName ?? ""}`.trim()
+    : "";
+  const participantInitials = participant
+    ? `${participant.profile?.firstName?.[0] ?? ""}${participant.profile?.lastName?.[0] ?? ""}`.toUpperCase()
+    : "";
+  const participantRole =
+    participant?.role === "provider"
+      ? participant?.providerInfo?.specialization || "Healthcare Provider"
+      : "Patient";
 
-        {showPatientsList ? (
-          <div className="flex-1 overflow-y-auto">
-            {patientsData && patientsData.length > 0 ? (
-              patientsData.map((patient) => (
-                <div
-                  key={patient._id}
-                  onClick={() => handleStartConversation(patient)}
-                  className="p-4 border-b border-border cursor-pointer hover:bg-secondary/30 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold flex-shrink-0">
+  return (
+    <div className="bg-card border border-border rounded-2xl shadow-md h-[calc(100vh-16rem)] flex flex-col overflow-hidden theme-surface">
+      {/* Top bar */}
+      <div className="flex-none flex items-center gap-3 px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm">
+        <h1 className="font-bold text-lg text-foreground">Messages</h1>
+        <div className="flex-1" />
+        <button
+          onClick={() => setShowPatientsList((v) => !v)}
+          className={`p-2 rounded-full transition-colors shrink-0 ${
+            showPatientsList
+              ? "bg-primary text-primary-foreground"
+              : "hover:bg-muted text-muted-foreground"
+          }`}
+          aria-label="New message"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Two-panel body */}
+      <div className="flex flex-1 min-h-0">
+        {/* Sidebar — 320px */}
+        <div className="w-80 flex-none border-r border-border flex flex-col min-h-0 bg-card">
+          {showPatientsList ? (
+            <div className="flex-1 overflow-y-auto">
+              <p className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border sticky top-0 bg-card z-10">
+                Your Patients
+              </p>
+              {patientsData && patientsData.length > 0 ? (
+                patientsData.map((patient) => (
+                  <button
+                    key={patient._id}
+                    onClick={() => handleStartConversation(patient)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 border-b border-border hover:bg-muted/40 transition-colors text-left ${
+                      selectedConversation?.participant?._id === patient._id
+                        ? "bg-primary/10"
+                        : ""
+                    }`}
+                  >
+                    <div className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-sm shrink-0">
                       {patient.profile?.firstName?.[0]}
                       {patient.profile?.lastName?.[0]}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-foreground truncate">
+                      <p className="text-sm font-semibold text-foreground truncate">
                         {patient.profile?.firstName} {patient.profile?.lastName}
-                      </h3>
+                      </p>
                       <p className="text-xs text-muted-foreground truncate">
                         {patient.email}
                       </p>
                     </div>
-                  </div>
+                  </button>
+                ))
+              ) : (
+                <div className="flex items-center justify-center p-8 text-muted-foreground text-sm text-center">
+                  No patients yet. Patients appear here once they book an
+                  appointment with you.
                 </div>
-              ))
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground p-4 text-center">
-                No patients yet. Patients appear here once they book an appointment with you.
-              </div>
-            )}
-          </div>
-        ) : (
-          <ConversationList
-            conversations={conversationsData}
-            selectedConversation={selectedConversation}
-            onSelectConversation={setSelectedConversation}
-          />
-        )}
-      </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto">
+              <ConversationList
+                conversations={conversationsData}
+                selectedConversation={selectedConversation}
+                onSelectConversation={(conv) => {
+                  setSelectedConversation(conv);
+                  setShowPatientsList(false);
+                }}
+              />
+            </div>
+          )}
+        </div>
 
-      {/* Message Thread */}
-      <div className="flex-1 flex flex-col">
-        {selectedConversation ? (
-          <>
-            <div className="p-4 border-b border-border bg-card">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold mr-3">
-                    {selectedConversation.participant?.profile?.firstName?.[0]}
-                    {selectedConversation.participant?.profile?.lastName?.[0]}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">
-                      {selectedConversation.participant?.profile?.firstName}{" "}
-                      {selectedConversation.participant?.profile?.lastName}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedConversation.participant?.role === "provider"
-                        ? selectedConversation.participant?.providerInfo
-                            ?.specialization || "Healthcare Provider"
-                        : "Patient"}
-                    </p>
-                  </div>
+        {/* Thread panel */}
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
+          {selectedConversation ? (
+            <>
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card flex-none">
+                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-sm shrink-0">
+                  {participantInitials}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-foreground text-sm truncate">
+                    {participantName}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {participantRole}
+                  </p>
+                </div>
+                <button
                   onClick={() => setSelectedConversation(null)}
+                  className="p-1.5 rounded-full hover:bg-muted text-muted-foreground transition-colors"
+                  aria-label="Close conversation"
                 >
                   ×
-                </Button>
+                </button>
               </div>
-            </div>
-            <MessageThread
-              messages={messagesData}
-              onSendMessage={handleSendMessage}
-              onTyping={handleTyping}
-              onStopTyping={handleStopTyping}
-              conversationId={selectedConversation?.conversationId}
-            />
-          </>
-        ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            <div className="text-center">
-              <MessageSquareText className="h-16 w-16 mx-auto mb-4 opacity-30" />
-              <p className="text-lg">
+              <MessageThread
+                messages={messagesData}
+                onSendMessage={handleSendMessage}
+                onTyping={handleTyping}
+                onStopTyping={handleStopTyping}
+                conversationId={selectedConversation?.conversationId}
+              />
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3 p-8">
+              <MessageSquare className="w-14 h-14 opacity-20" />
+              <p className="text-base text-center">
                 {showPatientsList
                   ? "Select a patient to start messaging"
                   : "Select a conversation or create a new one"}
               </p>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

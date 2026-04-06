@@ -171,8 +171,8 @@ function CountUpStat({ value, suffix = "" }) {
 export default function LandingPage() {
   const heroContainer = useRef(null);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isSceneReady, setIsSceneReady] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -212,11 +212,9 @@ export default function LandingPage() {
   const handleMouseMove = useCallback(
     (event) => {
       if (prefersReducedMotion || !heroContainer.current) return;
-
       const rect = heroContainer.current.getBoundingClientRect();
       const x = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
       const y = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
-
       setMousePos({ x, y });
     },
     [prefersReducedMotion],
@@ -226,10 +224,10 @@ export default function LandingPage() {
     setMousePos({ x: 0, y: 0 });
   }, []);
 
-  const splineTranslateX = mousePos.x * 30;
-  const splineTranslateY = mousePos.y * 20;
-  const splineRotateY = mousePos.x * 8;
-  const splineRotateX = -mousePos.y * 5;
+  // Whole-body drift — pure translate only (no scale/rotate), so Spline's
+  // internal pointer math stays accurate and the head keeps tracking the cursor.
+  const splineTranslateX = mousePos.x * 28;
+  const splineTranslateY = mousePos.y * 18;
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -375,15 +373,16 @@ export default function LandingPage() {
             <div className="absolute inset-0 bg-gradient-to-b from-background/5 via-background/10 to-background/60" />
           </div>
 
-          {/* Spline robot — full-width background layer, scaled up to fill viewport */}
+          {/* Spline robot — full-width background layer, scaled up and pushed
+              to the right so the robot sits on the right side of the hero. */}
           {!prefersReducedMotion && (
             <div
               className="absolute inset-0 hidden lg:block"
               style={{
-                transform: `scale(1.8) translate(8%, 10%) translate3d(${splineTranslateX}px, ${splineTranslateY}px, 0) rotateY(${splineRotateY}deg) rotateX(${splineRotateX}deg)`,
+                transform: `scale(1.8) translate(8%, 10%) translate3d(${splineTranslateX}px, ${splineTranslateY}px, 0)`,
                 transformOrigin: "center 35%",
                 transition: "transform 0.15s ease-out",
-                perspective: "1000px",
+                willChange: "transform",
               }}
             >
               <motion.div

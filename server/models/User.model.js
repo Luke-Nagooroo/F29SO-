@@ -104,6 +104,17 @@ const userSchema = new mongoose.Schema(
       allergies: [String],
       medications: [String],
       medicalHistory: [String],
+      heightCm: Number,
+      weightKg: Number,
+      insurance: {
+        provider: String,
+        policyNumber: String,
+      },
+      goals: {
+        steps: Number,
+        calories: Number,
+        sleep: Number,
+      },
     },
     privacySettings: {
       shareDataWithProviders: {

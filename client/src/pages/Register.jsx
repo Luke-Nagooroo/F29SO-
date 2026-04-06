@@ -14,6 +14,39 @@ import { cn } from "@/lib/utils";
 
 const AUTH_TRANSITION_MS = 620;
 
+// ── Password strength scoring ──
+// Returns { score: 0-4, label, color, hint }
+const evaluatePasswordStrength = (password) => {
+  if (!password) {
+    return { score: 0, label: "", color: "bg-stone-700", hint: "" };
+  }
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+  if (/\d/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+  // Cap at 4
+  score = Math.min(score, 4);
+
+  const tiers = [
+    { label: "Too weak", color: "bg-red-600", hint: "At least 8 characters" },
+    { label: "Weak", color: "bg-red-500", hint: "Add upper/lowercase letters" },
+    { label: "Fair", color: "bg-amber-500", hint: "Add numbers or symbols" },
+    { label: "Strong", color: "bg-emerald-500", hint: "Looking good" },
+    { label: "Very strong", color: "bg-emerald-400", hint: "Excellent password" },
+  ];
+  return { score, ...tiers[score] };
+};
+
+// Small visual marker for required vs optional fields
+const RequiredMark = () => (
+  <span className="ml-1 text-rose-400" aria-label="required">*</span>
+);
+const OptionalMark = () => (
+  <span className="ml-1 text-xs font-normal text-stone-500">(optional)</span>
+);
+
 const Register = () => {
   const [formData, setFormData] = useState({
     email: "",
@@ -30,7 +63,18 @@ const Register = () => {
     providerInfo: {
       specialization: "",
     },
+    healthInfo: {
+      heightCm: "",
+      weightKg: "",
+      medicalHistory: "",
+      insuranceProvider: "",
+      insurancePolicyNumber: "",
+      stepsGoal: "",
+      caloriesGoal: "",
+      sleepGoal: "",
+    },
   });
+  const [patientStep, setPatientStep] = useState(1); // 1 = essentials, 2 = health profile
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [needsGooglePasswordSetup, setNeedsGooglePasswordSetup] =
@@ -117,6 +161,18 @@ const Register = () => {
         profile: {
           ...prev.profile,
           [profileField]: value,
+        },
+      }));
+      return;
+    }
+
+    if (name.startsWith("healthInfo.")) {
+      const healthField = name.split(".")[1];
+      setFormData((prev) => ({
+        ...prev,
+        healthInfo: {
+          ...prev.healthInfo,
+          [healthField]: value,
         },
       }));
       return;
@@ -248,6 +304,34 @@ const Register = () => {
           formData.role === "provider"
             ? {
                 specialization: formData.providerInfo.specialization,
+              }
+            : undefined,
+        healthInfo:
+          formData.role === "patient"
+            ? {
+                heightCm: formData.healthInfo.heightCm
+                  ? Number(formData.healthInfo.heightCm)
+                  : undefined,
+                weightKg: formData.healthInfo.weightKg
+                  ? Number(formData.healthInfo.weightKg)
+                  : undefined,
+                medicalHistory:
+                  formData.healthInfo.medicalHistory || undefined,
+                insuranceProvider:
+                  formData.healthInfo.insuranceProvider || undefined,
+                insurancePolicyNumber:
+                  formData.healthInfo.insurancePolicyNumber || undefined,
+                goals: {
+                  steps: formData.healthInfo.stepsGoal
+                    ? Number(formData.healthInfo.stepsGoal)
+                    : undefined,
+                  calories: formData.healthInfo.caloriesGoal
+                    ? Number(formData.healthInfo.caloriesGoal)
+                    : undefined,
+                  sleep: formData.healthInfo.sleepGoal
+                    ? Number(formData.healthInfo.sleepGoal)
+                    : undefined,
+                },
               }
             : undefined,
       };
@@ -458,6 +542,48 @@ const Register = () => {
                       </div>
                     )}
 
+                    {/* Step indicator (patient only) */}
+                    {formData.role === "patient" && (
+                      <div className="mb-5 flex items-center gap-3">
+                        <div className="flex flex-1 items-center gap-2">
+                          <div
+                            className={cn(
+                              "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold",
+                              patientStep >= 1
+                                ? "bg-rose-700 text-white"
+                                : "bg-stone-800 text-stone-400",
+                            )}
+                          >
+                            1
+                          </div>
+                          <span className="text-xs font-medium text-stone-300">
+                            Account
+                          </span>
+                        </div>
+                        <div
+                          className={cn(
+                            "h-px flex-1 transition-colors",
+                            patientStep >= 2 ? "bg-rose-700" : "bg-stone-700",
+                          )}
+                        />
+                        <div className="flex flex-1 items-center justify-end gap-2">
+                          <span className="text-xs font-medium text-stone-300">
+                            Health profile
+                          </span>
+                          <div
+                            className={cn(
+                              "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold",
+                              patientStep >= 2
+                                ? "bg-rose-700 text-white"
+                                : "bg-stone-800 text-stone-400",
+                            )}
+                          >
+                            2
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <form className="space-y-5" onSubmit={handleSubmit}>
                       {error && (
                         <div className="rounded-lg border border-danger bg-danger-light px-4 py-3 text-danger-dark">
@@ -465,9 +591,20 @@ const Register = () => {
                         </div>
                       )}
 
+                      {/* ─── STEP 1: Account essentials ─── */}
+                      {(formData.role !== "patient" || patientStep === 1) && (
+                        <>
+                      <p className="text-xs text-stone-500">
+                        Fields marked <span className="text-rose-400">*</span>{" "}
+                        are required.
+                      </p>
+
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="firstName">First Name</Label>
+                          <Label htmlFor="firstName">
+                            First Name
+                            <RequiredMark />
+                          </Label>
                           <Input
                             id="firstName"
                             name="profile.firstName"
@@ -478,7 +615,10 @@ const Register = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="lastName">Last Name</Label>
+                          <Label htmlFor="lastName">
+                            Last Name
+                            <RequiredMark />
+                          </Label>
                           <Input
                             id="lastName"
                             name="profile.lastName"
@@ -491,7 +631,10 @@ const Register = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="email">Email address</Label>
+                        <Label htmlFor="email">
+                          Email address
+                          <RequiredMark />
+                        </Label>
                         <Input
                           id="email"
                           name="email"
@@ -505,7 +648,10 @@ const Register = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number</Label>
+                        <Label htmlFor="phone">
+                          Phone Number
+                          <OptionalMark />
+                        </Label>
                         <Input
                           id="phone"
                           name="profile.phone"
@@ -528,7 +674,12 @@ const Register = () => {
                           >
                             <div className="space-y-2">
                               <DatePickerInput
-                                label="Date of Birth"
+                                label={
+                                  <>
+                                    Date of Birth
+                                    <RequiredMark />
+                                  </>
+                                }
                                 controlClassName="bg-stone-800 border-stone-700 text-stone-100 placeholder:text-stone-500"
                                 onValueChange={(details) => {
                                   const dateStr =
@@ -554,7 +705,10 @@ const Register = () => {
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="gender">Gender</Label>
+                              <Label htmlFor="gender">
+                                Gender
+                                <OptionalMark />
+                              </Label>
                               <select
                                 id="gender"
                                 name="profile.gender"
@@ -583,6 +737,7 @@ const Register = () => {
                           >
                             <Label htmlFor="specialization">
                               Specialization
+                              <RequiredMark />
                             </Label>
                             <Input
                               id="specialization"
@@ -598,7 +753,10 @@ const Register = () => {
                       </AnimatePresence>
 
                       <div className="space-y-2">
-                        <Label htmlFor="password">Password</Label>
+                        <Label htmlFor="password">
+                          Password
+                          <RequiredMark />
+                        </Label>
                         <Input
                           id="password"
                           name="password"
@@ -609,11 +767,46 @@ const Register = () => {
                           value={formData.password}
                           onChange={handleChange}
                         />
+                        {/* Password strength meter */}
+                        {formData.password && (() => {
+                          const s = evaluatePasswordStrength(formData.password);
+                          return (
+                            <div className="space-y-1.5 pt-1">
+                              <div className="flex gap-1">
+                                {[0, 1, 2, 3].map((i) => (
+                                  <div
+                                    key={i}
+                                    className={cn(
+                                      "h-1.5 flex-1 rounded-full transition-colors",
+                                      i < s.score ? s.color : "bg-stone-700",
+                                    )}
+                                  />
+                                ))}
+                              </div>
+                              <p className="flex justify-between text-xs">
+                                <span
+                                  className={cn(
+                                    "font-medium",
+                                    s.score <= 1
+                                      ? "text-red-400"
+                                      : s.score === 2
+                                      ? "text-amber-400"
+                                      : "text-emerald-400",
+                                  )}
+                                >
+                                  {s.label}
+                                </span>
+                                <span className="text-stone-500">{s.hint}</span>
+                              </p>
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       <div className="space-y-2">
                         <Label htmlFor="confirmPassword">
                           Confirm Password
+                          <RequiredMark />
                         </Label>
                         <Input
                           id="confirmPassword"
@@ -625,15 +818,255 @@ const Register = () => {
                           value={formData.confirmPassword}
                           onChange={handleChange}
                         />
+                        {formData.confirmPassword &&
+                          formData.password !== formData.confirmPassword && (
+                            <p className="text-xs text-red-400">
+                              Passwords do not match
+                            </p>
+                          )}
                       </div>
+                        </>
+                      )}
 
-                      <Button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-gradient-to-r from-rose-900 via-red-800 to-rose-700 hover:from-rose-800 hover:via-red-700 hover:to-rose-600 text-white"
-                      >
-                        {loading ? "Creating account..." : "Sign up"}
-                      </Button>
+                      {/* ─── STEP 2: Health profile (patient only, all optional) ─── */}
+                      {formData.role === "patient" && patientStep === 2 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.25, ease: "easeOut" }}
+                          className="space-y-5"
+                        >
+                          <div className="rounded-lg border border-rose-900/40 bg-rose-950/20 px-4 py-3 text-xs text-rose-200">
+                            All fields below are <strong>optional</strong>. They help
+                            personalize your dashboard, alerts, and goals — you can
+                            update them anytime from your profile.
+                          </div>
+
+                          {/* Body metrics */}
+                          <div>
+                            <h3 className="mb-3 text-sm font-semibold text-stone-200">
+                              Body metrics
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="heightCm">
+                                  Height (cm)
+                                  <OptionalMark />
+                                </Label>
+                                <Input
+                                  id="heightCm"
+                                  name="healthInfo.heightCm"
+                                  type="number"
+                                  min="0"
+                                  placeholder="e.g. 175"
+                                  className="bg-stone-800 border-stone-700 text-stone-100 placeholder:text-stone-500"
+                                  value={formData.healthInfo.heightCm}
+                                  onChange={handleChange}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="weightKg">
+                                  Weight (kg)
+                                  <OptionalMark />
+                                </Label>
+                                <Input
+                                  id="weightKg"
+                                  name="healthInfo.weightKg"
+                                  type="number"
+                                  min="0"
+                                  placeholder="e.g. 70"
+                                  className="bg-stone-800 border-stone-700 text-stone-100 placeholder:text-stone-500"
+                                  value={formData.healthInfo.weightKg}
+                                  onChange={handleChange}
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Medical & insurance */}
+                          <div>
+                            <h3 className="mb-3 text-sm font-semibold text-stone-200">
+                              Medical & insurance
+                            </h3>
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="medicalHistory">
+                                  Medical history
+                                  <OptionalMark />
+                                </Label>
+                                <textarea
+                                  id="medicalHistory"
+                                  name="healthInfo.medicalHistory"
+                                  rows={3}
+                                  placeholder="Conditions, allergies, medications…"
+                                  className="flex w-full rounded-md border border-stone-700 bg-stone-800 px-3 py-2 text-sm text-stone-100 placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-700"
+                                  value={formData.healthInfo.medicalHistory}
+                                  onChange={handleChange}
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="insuranceProvider">
+                                    Insurance provider
+                                    <OptionalMark />
+                                  </Label>
+                                  <Input
+                                    id="insuranceProvider"
+                                    name="healthInfo.insuranceProvider"
+                                    placeholder="e.g. Aetna"
+                                    className="bg-stone-800 border-stone-700 text-stone-100 placeholder:text-stone-500"
+                                    value={formData.healthInfo.insuranceProvider}
+                                    onChange={handleChange}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="insurancePolicyNumber">
+                                    Policy number
+                                    <OptionalMark />
+                                  </Label>
+                                  <Input
+                                    id="insurancePolicyNumber"
+                                    name="healthInfo.insurancePolicyNumber"
+                                    placeholder="e.g. ABC123456"
+                                    className="bg-stone-800 border-stone-700 text-stone-100 placeholder:text-stone-500"
+                                    value={
+                                      formData.healthInfo.insurancePolicyNumber
+                                    }
+                                    onChange={handleChange}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Daily goals */}
+                          <div>
+                            <h3 className="mb-3 text-sm font-semibold text-stone-200">
+                              Daily health goals
+                            </h3>
+                            <div className="grid grid-cols-3 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="stepsGoal">
+                                  Steps
+                                  <OptionalMark />
+                                </Label>
+                                <Input
+                                  id="stepsGoal"
+                                  name="healthInfo.stepsGoal"
+                                  type="number"
+                                  min="0"
+                                  placeholder="10000"
+                                  className="bg-stone-800 border-stone-700 text-stone-100 placeholder:text-stone-500"
+                                  value={formData.healthInfo.stepsGoal}
+                                  onChange={handleChange}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="caloriesGoal">
+                                  Calories
+                                  <OptionalMark />
+                                </Label>
+                                <Input
+                                  id="caloriesGoal"
+                                  name="healthInfo.caloriesGoal"
+                                  type="number"
+                                  min="0"
+                                  placeholder="2000"
+                                  className="bg-stone-800 border-stone-700 text-stone-100 placeholder:text-stone-500"
+                                  value={formData.healthInfo.caloriesGoal}
+                                  onChange={handleChange}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="sleepGoal">
+                                  Sleep (hrs)
+                                  <OptionalMark />
+                                </Label>
+                                <Input
+                                  id="sleepGoal"
+                                  name="healthInfo.sleepGoal"
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  placeholder="8"
+                                  className="bg-stone-800 border-stone-700 text-stone-100 placeholder:text-stone-500"
+                                  value={formData.healthInfo.sleepGoal}
+                                  onChange={handleChange}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* ─── Action buttons ─── */}
+                      {formData.role === "patient" ? (
+                        patientStep === 1 ? (
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              setError("");
+                              // Lightweight validation before advancing
+                              if (
+                                !formData.profile.firstName ||
+                                !formData.profile.lastName ||
+                                !formData.email ||
+                                !formData.profile.dateOfBirth
+                              ) {
+                                setError(
+                                  "Please fill in all required fields before continuing.",
+                                );
+                                return;
+                              }
+                              if (formData.password.length < 8) {
+                                setError(
+                                  "Password must be at least 8 characters.",
+                                );
+                                return;
+                              }
+                              if (
+                                formData.password !== formData.confirmPassword
+                              ) {
+                                setError("Passwords do not match.");
+                                return;
+                              }
+                              setPatientStep(2);
+                            }}
+                            className="w-full bg-gradient-to-r from-rose-900 via-red-800 to-rose-700 hover:from-rose-800 hover:via-red-700 hover:to-rose-600 text-white"
+                          >
+                            Continue to health profile →
+                          </Button>
+                        ) : (
+                          <div className="flex gap-3">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                setError("");
+                                setPatientStep(1);
+                              }}
+                              className="flex-1 bg-stone-800 border-stone-700 text-stone-100 hover:bg-stone-700"
+                            >
+                              ← Back
+                            </Button>
+                            <Button
+                              type="submit"
+                              disabled={loading}
+                              className="flex-[2] bg-gradient-to-r from-rose-900 via-red-800 to-rose-700 hover:from-rose-800 hover:via-red-700 hover:to-rose-600 text-white"
+                            >
+                              {loading ? "Creating account..." : "Sign up"}
+                            </Button>
+                          </div>
+                        )
+                      ) : (
+                        <Button
+                          type="submit"
+                          disabled={loading}
+                          className="w-full bg-gradient-to-r from-rose-900 via-red-800 to-rose-700 hover:from-rose-800 hover:via-red-700 hover:to-rose-600 text-white"
+                        >
+                          {loading ? "Creating account..." : "Sign up"}
+                        </Button>
+                      )}
 
                       <p className="text-center text-sm text-stone-400">
                         Already have an account?{" "}
@@ -671,11 +1104,18 @@ const Register = () => {
             <p className="inline-block rounded-full border border-white/30 px-4 py-1 text-xs tracking-wide uppercase">
               Create your MEDXI profile
             </p>
-            <Link to="/" className="mt-8 block text-6xl font-black tracking-tight hover:opacity-80 transition-opacity">MEDXI</Link>
+            <h1 className="mt-8 block text-6xl font-black tracking-tight">MEDXI</h1>
             <p className="mt-6 max-w-md text-lg text-rose-100">
               Choose Patient or Doctor, complete your details, and start using
               your personalized virtual health companion.
             </p>
+            <Link
+              to="/"
+              className="group mt-6 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/5 px-4 py-2 text-sm font-medium text-rose-100 backdrop-blur-sm transition-all hover:border-white/60 hover:bg-white/10 hover:text-white"
+            >
+              <span aria-hidden="true" className="transition-transform group-hover:-translate-x-0.5">←</span>
+              Back to home
+            </Link>
           </div>
         </motion.section>
       </motion.div>

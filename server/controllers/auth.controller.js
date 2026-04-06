@@ -331,8 +331,15 @@ const updatePreferences = async (req, res) => {
  */
 const register = async (req, res) => {
   try {
-    const { email, password, role, profile, providerInfo, patientInfo } =
-      req.body;
+    const {
+      email,
+      password,
+      role,
+      profile,
+      providerInfo,
+      patientInfo,
+      healthInfo,
+    } = req.body;
 
     // Validate email format
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -391,8 +398,54 @@ const register = async (req, res) => {
       userData.providerInfo = providerInfo;
     }
 
-    if (role === "patient" && patientInfo) {
-      userData.patientInfo = patientInfo;
+    if (role === "patient") {
+      const mergedPatientInfo = { ...(patientInfo || {}) };
+
+      if (healthInfo && typeof healthInfo === "object") {
+        if (healthInfo.heightCm !== undefined) {
+          mergedPatientInfo.heightCm = Number(healthInfo.heightCm) || undefined;
+        }
+        if (healthInfo.weightKg !== undefined) {
+          mergedPatientInfo.weightKg = Number(healthInfo.weightKg) || undefined;
+        }
+        if (healthInfo.medicalHistory !== undefined) {
+          // Accept either an array or a free-text string (split on newline/comma)
+          mergedPatientInfo.medicalHistory = Array.isArray(
+            healthInfo.medicalHistory,
+          )
+            ? healthInfo.medicalHistory
+            : String(healthInfo.medicalHistory)
+                .split(/[\n,]+/)
+                .map((s) => s.trim())
+                .filter(Boolean);
+        }
+        if (
+          healthInfo.insuranceProvider !== undefined ||
+          healthInfo.insurancePolicyNumber !== undefined
+        ) {
+          mergedPatientInfo.insurance = {
+            provider: healthInfo.insuranceProvider || undefined,
+            policyNumber: healthInfo.insurancePolicyNumber || undefined,
+          };
+        }
+        if (healthInfo.goals && typeof healthInfo.goals === "object") {
+          mergedPatientInfo.goals = {
+            steps: healthInfo.goals.steps
+              ? Number(healthInfo.goals.steps)
+              : undefined,
+            calories: healthInfo.goals.calories
+              ? Number(healthInfo.goals.calories)
+              : undefined,
+            sleep: healthInfo.goals.sleep
+              ? Number(healthInfo.goals.sleep)
+              : undefined,
+          };
+        }
+      }
+
+      if (Object.keys(mergedPatientInfo).length > 0) {
+        userData.patientInfo = mergedPatientInfo;
+      }
     }
 
     // Generate email verification token
@@ -837,7 +890,17 @@ const updateProfile = async (req, res) => {
     }
 
     if (patientInfo && user.role === "patient") {
-      const allowed = ["emergencyContact", "bloodType", "allergies", "medications", "medicalHistory"];
+      const allowed = [
+        "emergencyContact",
+        "bloodType",
+        "allergies",
+        "medications",
+        "medicalHistory",
+        "heightCm",
+        "weightKg",
+        "insurance",
+        "goals",
+      ];
       allowed.forEach((key) => {
         if (patientInfo[key] !== undefined) {
           user.patientInfo[key] = patientInfo[key];

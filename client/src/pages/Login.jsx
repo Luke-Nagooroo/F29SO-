@@ -183,11 +183,18 @@ const Login = () => {
             <p className="inline-block rounded-full border border-white/30 px-4 py-1 text-xs tracking-wide uppercase">
               Virtual Care Platform
             </p>
-            <Link to="/" className="mt-8 block text-6xl font-black tracking-tight hover:opacity-80 transition-opacity">MEDXI</Link>
+            <h1 className="mt-8 block text-6xl font-black tracking-tight">MEDXI</h1>
             <p className="mt-6 max-w-md text-lg text-rose-100">
               Smarter care for patients and providers. Monitor health insights,
               appointments, and communication in one place.
             </p>
+            <Link
+              to="/"
+              className="group mt-6 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/5 px-4 py-2 text-sm font-medium text-rose-100 backdrop-blur-sm transition-all hover:border-white/60 hover:bg-white/10 hover:text-white"
+            >
+              <span aria-hidden="true" className="transition-transform group-hover:-translate-x-0.5">←</span>
+              Back to home
+            </Link>
           </div>
           <p className="text-sm text-rose-200/90">
             Secure healthcare companion for modern care teams.
